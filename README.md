@@ -12,7 +12,7 @@ It includes:
 
 ## What BRUT-V Is
 
-**BRUT-V** is a minimal creative coding framework built on a restrained **RV32I-inspired** assembly model, close in spirit to **RARS**. Its goal is not convenience, abstraction depth or visual polish by default. Its goal is to make image-making emerge from a sparse, explicit, low-level writing practice.
+**BRUT-V** is a minimal creative coding framework built on a restrained **RV32I-inspired** assembly model, close in spirit to **RARS**. Its goal is to make image-making emerge from a sparse, explicit, low-level writing practice shaped by asceticism and a search for austere beauty.
 
 At its core, BRUT-V tries to transpose ideas from **Code Art Brutalism** as formulated by **Simon Yuill** into a sketching environment:
 
@@ -28,20 +28,6 @@ The project draws a parallel between **Brutalist architecture** and **assembly l
 - direct construction instead of decorative abstraction
 - limited means used deliberately
 - beauty sought through rigor, constraint and reduction
-
-## Principles
-
-BRUT-V claims a simple ethos:
-
-- sobriety
-- asceticism
-- explicit structure
-- low-level literacy
-- austere beauty
-
-The framework is intentionally narrow. It favors a small conceptual surface, repetition, discipline, and visible control over the execution process.
-
-## Minimal Architecture
 
 BRUT-V is organized around a compact toolchain:
 
@@ -59,5 +45,3 @@ These macros implement the basic vocabulary needed to write sketches:
 - noise
 - animation
 - utility math helpers
-
-In other words, BRUT-V keeps the machine model small, and rebuilds the sketching interface through macros rather than through a large high-level runtime.
