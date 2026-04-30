@@ -1,0 +1,709 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRUT-V</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* â”€â”€ BB Manual Mono Pro â€” embedded so the page works offline. â”€â”€ */
+  @font-face {
+    font-family: "BB Manual Mono Pro";
+    src:
+      url("./fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2"),
+      url("./fonts/BB_Manual_Mono_Pro_TX_Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --bg:           #ffffff;
+    --accent:       #1a1a1a;
+    --muted:        #888888;
+    --editor-bg:    #E9E9E9;
+    --gutter-bg:    #F7F7F7;
+    --framework-line:#585858;
+
+    /* Sidebar: ~7cm wide, but with a safe minimum for the framed cartouche. */
+    --sidebar-w:    clamp(236px, 26vw, 7cm);
+    --sidebar-bg:   #E4E4E4;
+    --sidebar-fg:   #1a1a1a;
+
+    /* Canvas: slightly reduced, but still shrinks with the viewport down to 400 px. */
+    --canvas-w:     clamp(400px, 50vw, 21cm);
+
+    /* One unified font size for editor, sidebar and status text. */
+    --code-size:    17px;
+    --code-line:    25px;
+    --status-size:  14px;
+
+    --font-ui:      "BB Manual Mono Pro", "IBM Plex Mono", "Courier New", monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--code-size);
+    overflow: hidden;
+  }
+
+  /* â”€â”€ Layout â”€â”€ */
+  /* Three columns. Canvas takes its declared width, sidebar takes its
+     declared width, editor flexes between. */
+  #app {
+    display: grid;
+    grid-template-columns: minmax(400px, var(--canvas-w)) minmax(0, 1fr) minmax(236px, var(--sidebar-w));
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "commands editor sidebar"
+      "canvas   editor sidebar";
+    height: 100vh;
+    min-width: 0;
+  }
+
+  /* -- Commands panel -- */
+  #commands-panel {
+    grid-area: commands;
+    position: relative;
+    align-self: start;
+    background: #ffffff;
+    border: 2px solid #000;
+    margin: 28px 8px 8px 18px;
+    padding: 18px 14px 14px;
+    overflow: visible;
+  }
+  #commands-panel h2 {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    background: #ffffff;
+    font-size: var(--code-size);
+    color: #1a1a1a;
+    padding: 0 14px 2px;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    letter-spacing: .02em;
+    line-height: 1;
+    z-index: 2;
+    text-transform: uppercase;
+  }
+  #commands-body {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  /* â”€â”€ Canvas panel â”€â”€ */
+  #canvas-panel {
+    grid-area: canvas;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 2px solid #000;
+    margin: 8px 8px 18px 18px;
+    padding: 18px 14px 14px;
+    overflow: visible;
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+    align-self: start;
+  }
+  #canvas-panel h2 {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    background: #ffffff;
+    font-size: var(--code-size);
+    color: #1a1a1a;
+    padding: 0 14px 2px;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    letter-spacing: .02em;
+    line-height: 1;
+    z-index: 2;
+    text-transform: uppercase;
+  }
+  #output {
+    /* The bitmap is internally 512Ã—512; CSS rescales it to fit the panel
+       while keeping the aspect ratio square. `pixelated` keeps it sharp. */
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    min-width: 400px;
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: pixelated;
+    display: block;
+  }
+
+  /* â”€â”€ Editor â”€â”€ */
+  #editor-wrap {
+    grid-area: editor;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #ffffff;
+    border: 2px solid #000;
+    margin: 28px 8px 18px;
+    padding: 18px 14px 14px;
+    overflow: visible;
+  }
+  #editor-wrap h2 {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    background: #ffffff;
+    font-size: var(--code-size);
+    color: #1a1a1a;
+    padding: 0 14px 2px;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    letter-spacing: .02em;
+    line-height: 1;
+    z-index: 2;
+    text-transform: uppercase;
+  }
+  #editor {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* â”€â”€ Commands â”€â”€ */
+  #actions {
+    display: flex;
+    align-items: center;
+    background: #C6C6C6;
+    padding: 4px;
+    gap: 4px;
+  }
+  #actions button {
+    background: #E4E4E4;
+    color: #1a1a1a;
+    border: none;
+    padding: 0 8px;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: var(--code-size);
+    letter-spacing: .04em;
+    height: 26px;
+    line-height: 26px;
+    text-transform: uppercase;
+    transition: opacity .12s;
+  }
+  #actions button:hover:not(:disabled)  { opacity: .65; }
+  #actions button:active:not(:disabled) { opacity: 1;   }
+  #actions button:disabled              { opacity: .35; cursor: default; }
+
+  #status {
+    min-height: 26px;
+    line-height: 26px;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--status-size);
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  #status.ok  { color: #777; }
+  #status.err { color: #c44; }
+  #status.run { color: #777; }
+
+  /* â”€â”€ Sidebar â”€â”€ */
+  #sidebar {
+    grid-area: sidebar;
+    position: relative;
+    align-self: start;
+    display: block;
+    box-sizing: border-box;
+    background: #ffffff;
+    color: var(--sidebar-fg);
+    overflow: visible;
+    padding: 18px 14px 14px;
+    margin: 28px 18px 18px 8px;
+    border: 2px solid #000;
+    font-size: var(--code-size);
+    line-height: var(--code-line);
+  }
+  #sidebar h2 {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    background: #ffffff;
+    font-size: var(--code-size);
+    color: #1a1a1a;
+    padding: 0 14px 2px;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    letter-spacing: .02em;
+    line-height: 1;
+    z-index: 2;
+    text-transform: uppercase;
+  }
+  #sidebar ul {
+    list-style: none;
+    background: var(--sidebar-bg);
+    padding: 14px 0;
+  }
+  #sidebar li a {
+    display: block;
+    position: relative;
+    padding: 2px 18px 2px 34px;
+    color: var(--sidebar-fg);
+    text-decoration: none;
+    font-size: var(--code-size);            /* same as editor code */
+    font-family: var(--font-ui);
+    font-weight: 400;
+    line-height: var(--code-line);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color .12s, background .12s;
+  }
+  #sidebar li a::before {
+    content: "→";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-52%);
+    background: #C1C1C1;
+    padding: 0 3px;
+    opacity: 0;
+    transition: opacity .12s;
+  }
+  #sidebar li a:hover::before,
+  #sidebar li a.active::before { opacity: 1; }
+  #sidebar li a:hover,
+  #sidebar li a.active { color: var(--sidebar-fg); }
+
+  #editor .framework-call-text {
+    color: #ffffff !important;
+    background: var(--framework-line);
+    border-radius: 1px;
+  }
+  #editor .framework-call-text::selection {
+    background: #DDE8FF;
+    color: #1a1a1a;
+  }
+  #editor .framework-call-text::-moz-selection {
+    background: #DDE8FF;
+    color: #1a1a1a;
+  }
+
+  /* â”€â”€ Error overlay â”€â”€ */
+  #error-box {
+    display: none;
+    position: absolute;
+    bottom: 0; left: 0; right: var(--sidebar-w);
+    background: #fff8f8;
+    border-top: 1px solid #e8c8c8;
+    color: #aa3333;
+    font-size: var(--status-size);
+    padding: 8px 14px;
+    white-space: pre-wrap;
+    max-height: 140px;
+    overflow-y: auto;
+    z-index: 30;
+    font-family: var(--font-ui);
+  }
+  #error-box.visible { display: block; }
+
+  @media (max-width: 980px) {
+    html, body {
+      height: auto;
+      overflow: auto;
+    }
+
+    #app {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(520px, auto) auto;
+      grid-template-areas:
+        "commands"
+        "canvas"
+        "editor"
+        "sidebar";
+      height: auto;
+      min-height: 100vh;
+    }
+
+    #commands-panel,
+    #canvas-panel,
+    #editor-wrap,
+    #sidebar {
+      margin: 28px 18px 0;
+    }
+
+    #sidebar {
+      margin-bottom: 18px;
+    }
+
+    #canvas-panel {
+      width: auto;
+      max-width: min(100%, 21cm);
+      justify-self: stretch;
+      aspect-ratio: 1 / 1;
+    }
+
+    #output {
+      min-width: 0;
+      width: 100%;
+    }
+
+    #editor-wrap {
+      min-height: 520px;
+    }
+
+    #commands-body {
+      align-items: flex-start;
+    }
+
+    #status {
+      white-space: normal;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="commands-panel">
+    <h2>COMMANDS</h2>
+    <div id="commands-body">
+      <div id="actions">
+        <button id="btn-assemble">Assemble</button>
+        <button id="btn-run">Run</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+      <div id="status">ready</div>
+    </div>
+  </div>
+
+  <div id="canvas-panel">
+    <h2>CANVAS</h2>
+    <canvas id="output" width="512" height="512"></canvas>
+  </div>
+
+  <div id="editor-wrap">
+    <h2>RECURSIVE GRID.ASM</h2>
+    <div id="editor"></div>
+  </div>
+
+  <nav id="sidebar">
+    <h2>SKETCHES</h2>
+    <ul id="sketch-list"></ul>
+  </nav>
+</div>
+
+<div id="error-box"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+<script type="module">
+  import { assemble }                                         from "./assembler.js";
+  import { CORE_FILES }                                        from "./core-fs.js";
+  import { RV32IF }                                           from "./rv32if.js";
+  import { SKETCH_FILES, SKETCH_NAMES, SKETCH_DISPLAY_NAMES } from "./sketches-fs.js";
+
+  // DOM refs
+  const canvas  = document.getElementById("output");
+  const ctx2d   = canvas.getContext("2d");
+  const $status = document.getElementById("status");
+  const $err    = document.getElementById("error-box");
+  const $codeTitle = document.querySelector("#editor-wrap h2");
+  const btnAsm  = document.getElementById("btn-assemble");
+  const btnRun  = document.getElementById("btn-run");
+  const btnStop = document.getElementById("btn-stop");
+
+  let editor      = null;
+  let frameworkLineDecorations = null;
+  const sim       = new RV32IF();
+  let simRunning  = false;
+  let assembled   = false;
+  const FRAMEWORK_MACROS = new Set(
+    [...new Set(
+      [...(CORE_FILES["macros.s"] ?? "").matchAll(/\.macro\s+([A-Za-z_][A-Za-z0-9_]*)/g)]
+        .map(match => match[1])
+        .filter(name => !name.startsWith("__"))
+    )]
+  );
+
+  const DEFAULT_SKETCH = "maze_unicursal.asm";
+  const DEFAULT_SOURCE = SKETCH_FILES[DEFAULT_SKETCH] ?? Object.values(SKETCH_FILES)[0];
+
+  // Monaco setup
+  const monacoReady = new Promise(resolve => {
+    require.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs" } });
+    require(["vs/editor/editor.main"], () => {
+      defineRiscvLanguage();
+      // Pull the unified code size from the CSS variable so we never have
+      // it declared in two places.
+      const codeSize = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--code-size")) || 17;
+      const codeLine = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--code-line")) || 25;
+
+      editor = monaco.editor.create(document.getElementById("editor"), {
+        value:                  DEFAULT_SOURCE,
+        language:               "riscv",
+        theme:                  "brut",
+        fontSize:               codeSize,
+        lineHeight:             codeLine,
+        fontFamily:             "'BB Manual Mono Pro', 'IBM Plex Mono', 'Cascadia Code', 'Fira Code', monospace",
+        lineNumbers:            n => String(n).padStart(3, "0"),
+        glyphMargin:            false,
+        folding:                false,
+        lineDecorationsWidth:   8,
+        lineNumbersMinChars:    3,
+        minimap:                { enabled: false },
+        automaticLayout:        true,
+        scrollBeyondLastLine:   false,
+        renderLineHighlight:    "none",          // no horizontal active-line tint
+        guides:                 {
+          indentation: false,
+          highlightActiveIndentation: false,
+          bracketPairs: false,
+          bracketPairsHorizontal: false,
+          highlightActiveBracketPair: false,
+        },
+        bracketPairColorization:{ enabled: false },
+        wordWrap:               "off",
+        scrollbar:              {
+          verticalScrollbarSize: 4,
+          horizontalScrollbarSize: 4,
+          alwaysConsumeMouseWheel: false,
+        },
+        renderWhitespace:       "none",
+        stickyScroll:           { enabled: false },
+      });
+      frameworkLineDecorations = editor.createDecorationsCollection();
+      updateCodeTitle(DEFAULT_SKETCH);
+      updateFrameworkLineDecorations();
+      editor.onDidChangeModelContent(() => {
+        updateFrameworkLineDecorations();
+      });
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => doAssemble(true));
+      resolve();
+    });
+  });
+
+  function updateCodeTitle(name) {
+    const label = SKETCH_DISPLAY_NAMES[name] ?? name.replace(/\.asm$/i, "");
+    $codeTitle.textContent = `${label.toUpperCase()}.ASM`;
+  }
+
+  function updateFrameworkLineDecorations() {
+    if (!editor || !frameworkLineDecorations) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const decorations = [];
+    const lineCount = model.getLineCount();
+
+    for (let lineNumber = 1; lineNumber <= lineCount; lineNumber += 1) {
+      const line = model.getLineContent(lineNumber);
+      const match = line.match(/^(\s*)([A-Z][A-Z0-9_]*)(.*?)(\s*)(#.*)?$/);
+      if (!match) continue;
+
+      const macroName = match[2];
+      if (!FRAMEWORK_MACROS.has(macroName)) continue;
+
+      const content = `${match[2]}${match[3]}`;
+      if (!content.trim()) continue;
+
+      const startColumn = match[1].length + 1;
+      const endColumn = startColumn + content.length;
+
+      decorations.push({
+        range: new monaco.Range(lineNumber, startColumn, lineNumber, endColumn),
+        options: {
+          inlineClassName: "framework-call-text",
+        }
+      });
+    }
+
+    frameworkLineDecorations.set(decorations);
+  }
+
+  function defineRiscvLanguage() {
+    monaco.languages.register({ id: "riscv" });
+    monaco.languages.setMonarchTokensProvider("riscv", {
+      tokenizer: {
+        root: [
+          [/#.*$/,                                                                     "comment"],
+          [/\.(include|eqv|data|text|globl|word|byte|float|space|align|asciz|string|asciiz|half|macro|end_macro)\b/, "keyword.directive"],
+          [/\b[a-z][a-z0-9_]*:/,                                                       "type.identifier"],
+          [/\b(setup|draw)\b/,                                                         "type"],
+          [/\b[A-Z][A-Z0-9_]*\b/,                                                      "keyword.control"],
+          [/\b(add|addi|sub|mul|div|divu|rem|remu|and|andi|or|ori|xor|xori|sll|slli|srl|srli|sra|srai|lw|lh|lb|lbu|lhu|sw|sh|sb|lui|auipc|jal|jalr|beq|bne|beqz|bnez|blt|bge|bltu|bgeu|bgt|ble|bgtu|bleu|j|jr|ret|call|mv|li|la|neg|not|seqz|snez|sltz|sgtz|slti|sltiu|slt|sltu|nop|ecall|ebreak|fence|mulh|mulhu|mulhsu|fadd\.s|fsub\.s|fmul\.s|fdiv\.s|fsqrt\.s|fmin\.s|fmax\.s|fmadd\.s|fmsub\.s|fnmadd\.s|fnmsub\.s|fcvt\.s\.w|fcvt\.s\.wu|fcvt\.w\.s|fcvt\.wu\.s|fmv\.w\.x|fmv\.x\.w|fmv\.s|fneg\.s|fabs\.s|fsgnj\.s|fsgnjn\.s|fsgnjx\.s|feq\.s|flt\.s|fle\.s|fclass\.s|flw|fsw)\b/, "keyword"],
+          [/\b(zero|ra|sp|gp|tp|fp|t[0-6]|s[0-9]|s1[01]|a[0-7]|ft[0-9]|ft1[01]|fs[0-9]|fs1[01]|fa[0-7]|x[0-9]|x[12][0-9]|x3[01]|f[0-9]|f[12][0-9]|f3[01])\b/, "variable"],
+          [/0x[0-9a-fA-F]+/,                                                           "number.hex"],
+          [/-?\b\d+(\.\d+)?\b/,                                                        "number"],
+          [/"(?:[^"\\]|\\.)*"/,                                                        "string"],
+        ]
+      }
+    });
+    monaco.editor.defineTheme("brut", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "",                foreground: "1a1a1a", background: "E9E9E9" },
+        { token: "comment",         foreground: "898989" },
+        { token: "keyword",         foreground: "1a1a1a" },
+        { token: "keyword.directive", foreground: "1a1a1a" },
+        { token: "keyword.control", foreground: "1a1a1a" },
+        { token: "type",            foreground: "1a1a1a" },
+        { token: "type.identifier", foreground: "1a1a1a" },
+        { token: "variable",        foreground: "1a1a1a" },
+        { token: "number",          foreground: "1a1a1a" },
+        { token: "number.hex",      foreground: "1a1a1a" },
+        { token: "string",          foreground: "1a1a1a" },
+      ],
+      colors: {
+        "editor.background":              "#E9E9E9",
+        "editor.foreground":              "#1a1a1a",
+        "editor.lineHighlightBackground": "#E9E9E9",
+        "editor.lineHighlightBorder":     "#E9E9E9",
+        "editorIndentGuide.background":   "#E9E9E9",
+        "editorIndentGuide.activeBackground": "#E9E9E9",
+        "editor.selectionBackground":     "#dde8ff",
+        "editorCursor.foreground":        "#1a1a1a",
+        "editorGutter.background":        "#F7F7F7",
+        "editorLineNumber.foreground":    "#1a1a1a",
+        "editorLineNumber.activeForeground": "#1a1a1a",
+        "scrollbar.shadow":               "#E9E9E9",
+        "scrollbarSlider.background":     "#f2f2f2",
+        "scrollbarSlider.hoverBackground":"#dddddd",
+        "scrollbarSlider.activeBackground":"#cfcfcf",
+      }
+    });
+  }
+
+  // Sidebar
+  const $list = document.getElementById("sketch-list");
+  for (const name of SKETCH_NAMES) {
+    const li = document.createElement("li");
+    const a  = document.createElement("a");
+    a.href = "#";
+    a.textContent = SKETCH_DISPLAY_NAMES[name] ?? name.replace(/\.asm$/, "");
+    a.dataset.name = name;
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      loadSketch(name);
+      document.querySelectorAll("#sketch-list a").forEach(x => x.classList.remove("active"));
+      a.classList.add("active");
+    });
+    li.appendChild(a);
+    $list.appendChild(li);
+    if (name === DEFAULT_SKETCH) a.classList.add("active");
+  }
+
+  function loadSketch(name) {
+    const src = SKETCH_FILES[name];
+    if (!src) { setStatus(`unknown sketch: ${name}`, "err"); return; }
+    updateCodeTitle(name);
+    if (editor) {
+      editor.setValue(src);
+    }
+    hideError();
+    setStatus("ready");
+    assembled = false;
+  }
+
+  // Assemble + run
+  async function doAssemble(autoRun = false) {
+    await monacoReady;
+    simStop();
+    setStatus("assembling...", "run");
+    hideError();
+
+    const source = editor.getValue();
+    const t0 = performance.now();
+    let r;
+    try { r = assemble(source); }
+    catch (e) {
+      setStatus("assemble crashed", "err");
+      showError(e.stack ?? String(e));
+      return;
+    }
+    const dt = (performance.now() - t0).toFixed(0);
+
+    if (r.errors && r.errors.length) {
+      setStatus("assemble error", "err");
+      showError(r.errors.join("\n"));
+      return;
+    }
+
+    sim.load(r.text, r.data);
+    assembled = true;
+    setStatus(`assembled (${r.text.length}B text - ${r.data.length}B data - ${dt}ms)`, "ok");
+    if (autoRun) simRun();
+  }
+
+  function simRun() {
+    if (simRunning) return;
+    if (!assembled) { doAssemble(true); return; }
+    simRunning = true;
+    btnRun.disabled  = true;
+    btnAsm.disabled  = true;
+    btnStop.disabled = false;
+    setStatus("running...", "run");
+
+    sim.onExit = () => {
+      simRunning = false;
+      btnRun.disabled  = false;
+      btnAsm.disabled  = false;
+      btnStop.disabled = true;
+      setStatus("done", "ok");
+      renderFrame();
+    };
+    sim.onError = (msg) => {
+      simRunning = false;
+      btnRun.disabled  = false;
+      btnAsm.disabled  = false;
+      btnStop.disabled = true;
+      setStatus("sim error", "err");
+      showError("Simulator error:\n" + msg);
+    };
+    sim.runAsync(renderFrame, 500_000_000, 200_000);
+  }
+
+  function simStop() {
+    sim.running = false;
+    simRunning  = false;
+    btnRun.disabled  = false;
+    btnAsm.disabled  = false;
+    btnStop.disabled = true;
+  }
+
+  function renderFrame() {
+    const w = 512, h = 512;
+    const rgba = sim.getFramebuffer(w, h);
+    ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
+  }
+
+  function setStatus(msg, cls = "") { $status.textContent = msg; $status.className = cls; }
+  function showError(msg) { $err.textContent = msg; $err.classList.add("visible"); }
+  function hideError()    { $err.classList.remove("visible"); }
+
+  monacoReady.then(() => {
+    editor.onDidChangeModelContent(() => { assembled = false; });
+  });
+
+  btnAsm .addEventListener("click", () => doAssemble(false));
+  btnRun .addEventListener("click", () => simRun());
+  btnStop.addEventListener("click", simStop);
+</script>
+</body>
+</html>
+
+
