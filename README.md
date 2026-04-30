@@ -1,30 +1,63 @@
 # BRUT-V Web Static
 
-Static browser build of BRUT-V: a RISC-V sketch environment with:
+This repository contains a minimal environment for reading, writing and running sketches composed with **BRUT-V**, a creative coding framework in **RISC-V assembly**.
 
+It includes:
+
+- a browser-based code editor
 - a JavaScript assembler
-- a RV32I+M+F simulator
-- an embedded drawing framework
-- embedded example sketches
+- a small RISC-V virtual machine
+- the BRUT-V macro framework
+- a set of example sketches
 
-This repository is intended to be published with GitHub Pages so the site is publicly accessible for free.
+## What BRUT-V Is
 
-## Local preview
+**BRUT-V** is a minimal creative coding framework built on a restrained **RV32I-inspired** assembly model, close in spirit to **RARS**. Its goal is not convenience, abstraction depth or visual polish by default. Its goal is to make image-making emerge from a sparse, explicit, low-level writing practice.
 
-From the repository root:
+At its core, BRUT-V tries to transpose ideas from **Code Art Brutalism** as formulated by **Simon Yuill** into a sketching environment:
 
-```powershell
-python -m http.server 8000
-```
+- rejection of ornament
+- structural legibility
+- material austerity
+- pragmatic realism
+- schematic, elementary construction
 
-Then open:
+The project draws a parallel between **Brutalist architecture** and **assembly language**:
 
-`http://localhost:8000/`
+- exposed structure instead of concealed mechanism
+- direct construction instead of decorative abstraction
+- limited means used deliberately
+- beauty sought through rigor, constraint and reduction
 
-## GitHub Pages
+## Principles
 
-If this repository is pushed to GitHub under the `op-rt` account, the site can be published with GitHub Pages from the `main` branch, root folder.
+BRUT-V claims a simple ethos:
 
-Expected public URL:
+- sobriety
+- asceticism
+- explicit structure
+- low-level literacy
+- austere beauty
 
-`https://op-rt.github.io/<repo-name>/`
+The framework is intentionally narrow. It favors a small conceptual surface, repetition, discipline, and visible control over the execution process.
+
+## Minimal Architecture
+
+BRUT-V is organized around a compact toolchain:
+
+- a **RISC-V assembler** in JavaScript
+- a **minimal VM**, primarily centered on **RV32I**, with additional support used by the framework
+- a **macro layer** providing the equivalent of elementary **Processing-like** features
+
+These macros implement the basic vocabulary needed to write sketches:
+
+- canvas setup
+- pixels and primitives
+- stroke and fill
+- transforms
+- text
+- noise
+- animation
+- utility math helpers
+
+In other words, BRUT-V keeps the machine model small, and rebuilds the sketching interface through macros rather than through a large high-level runtime.
