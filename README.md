@@ -10,6 +10,8 @@ It includes:
 - the BRUT-V macro framework
 - a set of example sketches
 
+[Online demo](https://op-rt.github.io/brut-v/)
+
 ## What BRUT-V Is
 
 **BRUT-V** is a minimal creative coding framework built on a restrained **RV32I-inspired** assembly model, close in spirit to **RARS**. Its goal is to make image-making emerge from a sparse, explicit, low-level writing practice shaped by asceticism and a search for austere beauty.
@@ -30,7 +32,3 @@ These macros implement the basic vocabulary needed to write sketches:
 - noise
 - animation
 - utility math helpers
-
-Online demo:
-
-`https://op-rt.github.io/brut-v/`
