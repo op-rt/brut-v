@@ -30,3 +30,7 @@ These macros implement the basic vocabulary needed to write sketches:
 - noise
 - animation
 - utility math helpers
+
+Online demo:
+
+`https://op-rt.github.io/brut-v/`
