@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRUT-V Documentation</title>
+<link rel="icon" type="image/jpeg" href="../icon.jpg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @font-face {
+    font-family: "BB Manual Mono Pro";
+    src:
+      url("../fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2"),
+      url("../fonts/BB_Manual_Mono_Pro_TX_Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --bg:            #ffffff;
+    --accent:        #1a1a1a;
+    --muted:         #777777;
+    --panel-bg:      #ffffff;
+    --sidebar-level-0: #C6C6C6;
+    --sidebar-level-1: #E4E4E4;
+    --sidebar-level-2: #F2F2F2;
+    --sidebar-level-3: #FBFBFB;
+    --font-ui:       "BB Manual Mono Pro", "IBM Plex Mono", "Courier New", monospace;
+    --ui-size:       17px;
+    --ui-line:       25px;
+    --sidebar-w:     clamp(320px, 30vw, 10cm);
+    --content-w:     minmax(0, 1fr);
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--ui-size);
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: minmax(320px, var(--sidebar-w)) var(--content-w);
+    gap: 0;
+    min-height: 100vh;
+  }
+
+  .panel {
+    position: relative;
+    background: var(--panel-bg);
+    overflow: visible;
+  }
+
+  #sidebar > h2 {
+    display: block;
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 0 10px 2px;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    font-size: var(--ui-size);
+    letter-spacing: .02em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  #sidebar {
+    margin: 18px 8px 18px 18px;
+    padding: 14px;
+    align-self: start;
+    border: 2px solid #000000;
+    background: #ffffff;
+  }
+
+  #sidebar-body {
+    background: #E4E4E4;
+    display: block;
+    padding: 0 14px 14px;
+    width: 100%;
+  }
+
+  #doc-list {
+    display: block;
+    width: 100%;
+  }
+
+  #sidebar ul,
+  #sidebar li {
+    list-style: none;
+  }
+
+  #doc-list > li {
+    margin: 0;
+  }
+
+  .tree-link::before {
+    content: "→";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-52%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #C1C1C1;
+    height: 14px;
+    min-width: 14px;
+    padding: 0 2px;
+    line-height: 14px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity .12s;
+  }
+
+  .tree-link:hover::before,
+  .tree-link.active::before,
+  .tree-row.open > .tree-link::before {
+    opacity: 1;
+  }
+
+  .tree-link::before {
+    content: "\2192";
+  }
+
+  #content-panel {
+    margin: 18px 18px 18px 8px;
+    padding: 0;
+    min-width: 0;
+  }
+
+  #content-shell {
+    background: #ffffff;
+    min-height: calc(100vh - 80px);
+    padding: 0 28px 26px;
+  }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  #doc-title {
+    font-size: var(--ui-size);
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  #back-link {
+    display: inline-block;
+    color: var(--accent);
+    text-decoration: none;
+    border: none;
+    background: #E4E4E4;
+    padding: 2px 8px;
+    line-height: 26px;
+    min-height: 26px;
+    white-space: nowrap;
+  }
+
+  #back-link:hover {
+    opacity: .65;
+  }
+
+  #content {
+    max-width: 830px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  .tree-children {
+    list-style: none;
+  }
+
+  .tree-row {
+    display: flex;
+    align-items: center;
+    min-height: 29px;
+  }
+
+  .tree-link {
+    display: block;
+    position: relative;
+    flex: 1;
+    padding: 2px 18px 2px 34px;
+    color: var(--accent);
+    text-decoration: none;
+    line-height: var(--ui-line);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #doc-list > li > .tree-row > .tree-link {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 22px;
+    text-transform: uppercase;
+  }
+
+  #doc-list > li > .tree-row > .tree-link > .tree-label {
+    display: inline;
+    background: transparent;
+    padding: 0;
+    line-height: inherit;
+  }
+
+  .tree-row.open > a.tree-link.expandable::before {
+    content: "\2193" !important;
+  }
+
+  .tree-children {
+    display: none;
+    background: #ECECEC;
+    margin: 0;
+    padding: 4px 0 8px;
+  }
+
+  .tree-children.open {
+    display: block;
+  }
+
+  .tree-children .tree-link {
+    padding-left: 46px;
+  }
+
+  .tree-children .tree-link::before {
+    left: 26px;
+  }
+
+  .tree-children .tree-children {
+    background: #F0F0F0;
+    padding-top: 0;
+  }
+
+  .tree-children .tree-children .tree-children {
+    background: #F6F6F6;
+  }
+
+  .tree-link.leaf-link {
+    background: #FBFBFB;
+  }
+
+  .tree-link.branch-link {
+    background: #F0F0F0;
+  }
+
+  .tree-link.category-link {
+    background: #ECECEC;
+  }
+
+  .tree-children .tree-children .tree-link {
+    padding-left: 58px;
+    font-size: 15px;
+  }
+
+  .tree-children .tree-children .tree-link::before {
+    left: 38px;
+  }
+
+  #content h1,
+  #content h2,
+  #content h3,
+  #content h4 {
+    font-weight: 400;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    font-size: var(--ui-size);
+  }
+
+  #content h1::before,
+  #content h2::before,
+  #content h3::before,
+  #content h4::before {
+    content: "\25BE\00A0";
+  }
+
+  #content h1 {
+    margin: 0 0 10px;
+  }
+
+  #content h2 {
+    margin: 34px 0 10px;
+    padding-top: 4px;
+  }
+
+  #content h3 {
+    margin: 26px 0 10px;
+  }
+
+  #content h4 {
+    margin: 18px 0 10px;
+  }
+
+  #content p {
+    margin: 0 0 16px;
+    padding-left: 18px;
+  }
+
+  #content > :first-child {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  #content ul {
+    margin: 0 0 16px 0;
+    list-style: none;
+    padding-left: 18px;
+  }
+
+  #content ol {
+    margin: 0 0 16px 0;
+    list-style: none;
+    padding-left: 18px;
+    counter-reset: item;
+  }
+
+  #content p + ul {
+    margin-top: -8px;
+  }
+
+  #content p + ol {
+    margin-top: -8px;
+  }
+
+  #content li {
+    position: relative;
+    padding-left: 20px;
+    margin: 0 0 6px;
+  }
+
+  #content li::before {
+    content: "-";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--accent);
+  }
+
+  #content ol > li::before {
+    content: counter(item) ".";
+    counter-increment: item;
+  }
+
+  #content code {
+    background: #f3f3f3;
+    color: var(--accent);
+    padding: 0 4px;
+  }
+
+  #content .macro-inline-token {
+    background: #C6C6C6;
+    color: var(--accent);
+    padding: 0 4px;
+  }
+
+  #content code.macro-inline-wrapper {
+    background: transparent;
+    padding: 0;
+  }
+
+  #content pre {
+    margin: 0;
+    margin-left: 18px;
+    padding: 0;
+    background: transparent;
+    overflow-x: auto;
+  }
+
+  #content pre code {
+    display: block;
+    background: transparent;
+    padding: 14px 16px;
+    white-space: pre;
+  }
+
+  .macro-line {
+    background: #585858;
+    color: #ffffff;
+    padding: 0 4px;
+  }
+
+  .code-comment {
+    color: #9A9A9A;
+  }
+
+  .snippet-box {
+    position: relative;
+    margin: 0 0 18px;
+    padding: 0 8px 12px 0;
+  }
+
+  .snippet-box::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 0;
+    bottom: 0;
+    left: 8px;
+    background: #A8A8A8;
+    z-index: 0;
+  }
+
+  .snippet-surface {
+    position: relative;
+    z-index: 1;
+    padding: 14px;
+    background: #E9E9E9;
+  }
+
+  .snippet-frame {
+    position: relative;
+    border: 2px solid #000000;
+    background: transparent;
+    padding-top: 10px;
+  }
+
+  .snippet-frame::before {
+    content: "Exemple";
+    position: absolute;
+    top: 0;
+    left: 16px;
+    transform: translateY(-58%);
+    background: #E9E9E9;
+    color: var(--accent);
+    padding: 0 10px 2px;
+    font-family: var(--font-ui);
+    font-size: var(--ui-size);
+    line-height: 1;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  #content a {
+    color: var(--accent);
+  }
+
+  #status {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.4;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 980px) {
+    #app {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #sidebar,
+    #content-panel {
+      margin: 18px 18px 0;
+    }
+
+    #content-panel {
+      margin-bottom: 18px;
+    }
+
+    #content-shell {
+      min-height: auto;
+    }
+
+    #topbar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="sidebar" class="panel">
+    <h2>Doc</h2>
+    <div id="sidebar-body">
+      <ul id="doc-list"></ul>
+    </div>
+  </nav>
+
+  <main id="content-panel" class="panel">
+    <div id="content-shell">
+      <div id="topbar">
+        <div id="doc-title">Loading</div>
+        <a id="back-link" href="../index.html">Return To Editor</a>
+      </div>
+      <article id="content"></article>
+      <div id="status">ready</div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  const DOCS = [
+    { id: "overview", title: "Overview", file: "./index.md" },
+    { id: "getting-started", title: "Getting Started", file: "./getting-started.md", sectioned: true },
+    { id: "references", title: "References", file: "./references.md" },
+  ];
+
+  const $list = document.getElementById("doc-list");
+  const $title = document.getElementById("doc-title");
+  const $content = document.getElementById("content");
+  const $status = document.getElementById("status");
+  const docCache = new Map();
+  const collapsedNodes = new Set();
+  let referencesIndex = null;
+  const sectionIndexes = new Map();
+  const MACRO_NAMES = new Set([
+    "ISIZE","BACKGROUND","IBACKGROUND","POINT","IPOINT","PIXEL","IPIXEL","PIXEL_RGB","IPIXEL_RGB",
+    "IMAGE","IIMAGE","IMAGE_1BPP_2X","IIMAGE_1BPP_2X","LINE","ILINE","RECT","IRECT","RECT_ROUNDED",
+    "IRECT_ROUNDED","CIRCLE","ICIRCLE","ELLIPSE","IELLIPSE","ARC","IARC","TRIANGLE","ITRIANGLE",
+    "BEGINSHAPE","VERTEX","ENDSHAPE","POLYGON","IPOLYGON","POLYLINE","IPOLYLINE","STROKE","ISTROKE",
+    "STROKE_RGB","ISTROKE_RGB","NO_STROKE","STROKE_WEIGHT","ISTROKE_WEIGHT","STROKE_CAP","ISTROKE_CAP",
+    "TEXT_SIZE","ITEXT_SIZE","TEXT","TEXT_WIDTH","TEXT_HEIGHT","FONT","FILL","IFILL","FILL_RGB",
+    "IFILL_RGB","NO_FILL","IRANDOM","RANDOM","RANDOM24","COS","SIN","TAN","ATAN","ATAN2","ASIN",
+    "ACOS","LERP","NORM","MAP","TRANSLATE","ITRANSLATE","SCALE","ISCALE","ROTATE","IROTATE","RADIANS",
+    "DEGREES","MIN","MAX","ABS","SQRT","CONSTRAIN","MINF","MAXF","ABSF","SQRTF","ROUND","FLOOR","CEIL",
+    "LOG","NOISE1D","NOISE2D","NOISE_SEED","INOISE_SEED","DIST","IDIST","DISTF","LOAD_POINT",
+    "STORE_POINT","LOAD_POINTF","STORE_POINTF","PUSH_MATRIX","POP_MATRIX","REGISTER_DRAW","LOOP",
+    "NOLOOP","FRAMECOUNT","PRINT_REG","PRINT_HEX","PRINT_REGF","PRINT_HEXF"
+  ]);
+  const INLINE_HIGHLIGHT_NAMES = new Set([
+    ...MACRO_NAMES,
+    "WHITE","BLACK","YELLOW","GREEN","GREY","BLUE","RED","MAGENTA",
+    "PI","HALF_PI","QUARTER_PI","TAU",
+  ]);
+
+  function slugify(text) {
+    return text
+      .toLowerCase()
+      .replace(/[`']/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function stripCodeTicks(text) {
+    const match = text.match(/^`([^`]+)`$/);
+    return match ? match[1] : text;
+  }
+
+  function firstMacroToken(signature) {
+    return stripCodeTicks(signature).split(/\s+/)[0];
+  }
+
+  function isMacroSignature(text) {
+    const token = firstMacroToken(text);
+    return INLINE_HIGHLIGHT_NAMES.has(token) || /^[A-Z][A-Z0-9_]*$/.test(token);
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function parseInline(text) {
+    return escapeHtml(text)
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, (_, code) => {
+        if (!isMacroSignature(code)) {
+          return `<code>${escapeHtml(code)}</code>`;
+        }
+        const token = firstMacroToken(code);
+        const rest = code.slice(token.length);
+        return `<code class="macro-inline-wrapper"><span class="macro-inline-token">${escapeHtml(token)}</span>${escapeHtml(rest)}</code>`;
+      })
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  }
+
+  function renderCodeBlock(raw) {
+    return raw.split("\n").map(line => {
+      const match = line.match(/^(\s*)([A-Z][A-Z0-9_]*)(.*)$/);
+      if (!match) {
+        return escapeHtml(line);
+      }
+
+      const [, indent, token, rest] = match;
+      if (!MACRO_NAMES.has(token)) {
+        return escapeHtml(line);
+      }
+
+      const commentIndex = rest.indexOf("#");
+      const beforeComment = commentIndex >= 0 ? rest.slice(0, commentIndex) : rest;
+      const comment = commentIndex >= 0 ? rest.slice(commentIndex) : "";
+      const trimmedInstructionRest = beforeComment.replace(/\s+$/, "");
+      const trailingSpaces = beforeComment.slice(trimmedInstructionRest.length);
+      const highlighted = `${token}${trimmedInstructionRest}`;
+
+      return (
+        `${escapeHtml(indent)}` +
+        `<span class="macro-line">${escapeHtml(highlighted)}</span>` +
+        `${escapeHtml(trailingSpaces)}` +
+        `${comment ? `<span class="code-comment">${escapeHtml(comment)}</span>` : ""}`
+      );
+    }).join("\n");
+  }
+
+  function renderMarkdown(md) {
+    const lines = md.replace(/\r\n/g, "\n").split("\n");
+    const out = [];
+    let inCode = false;
+    let codeLines = [];
+    let inList = false;
+    let listTag = null;
+    let paragraph = [];
+
+    function flushParagraph() {
+      if (!paragraph.length) return;
+      out.push(`<p>${parseInline(paragraph.join(" "))}</p>`);
+      paragraph = [];
+    }
+
+    function flushList() {
+      if (!inList) return;
+      out.push(`</${listTag}>`);
+      inList = false;
+      listTag = null;
+    }
+
+    function flushCode() {
+      if (!inCode) return;
+      out.push(`<div class="snippet-box"><div class="snippet-surface"><div class="snippet-frame"><pre><code>${renderCodeBlock(codeLines.join("\n"))}</code></pre></div></div></div>`);
+      inCode = false;
+      codeLines = [];
+    }
+
+    for (const line of lines) {
+      if (line.startsWith("```")) {
+        flushParagraph();
+        flushList();
+        if (inCode) {
+          flushCode();
+        } else {
+          inCode = true;
+        }
+        continue;
+      }
+
+      if (inCode) {
+        codeLines.push(line);
+        continue;
+      }
+
+      const heading = line.match(/^(#{1,4})\s+(.*)$/);
+      if (heading) {
+        flushParagraph();
+        flushList();
+        const level = heading[1].length;
+        out.push(`<h${level}>${parseInline(heading[2])}</h${level}>`);
+        continue;
+      }
+
+      const bullet = line.match(/^- (.*)$/);
+      if (bullet) {
+        flushParagraph();
+        if (!inList || listTag !== "ul") {
+          flushList();
+          out.push("<ul>");
+          inList = true;
+          listTag = "ul";
+        }
+        out.push(`<li>${parseInline(bullet[1])}</li>`);
+        continue;
+      }
+
+      const ordered = line.match(/^\d+\.\s+(.*)$/);
+      if (ordered) {
+        flushParagraph();
+        if (!inList || listTag !== "ol") {
+          flushList();
+          out.push("<ol>");
+          inList = true;
+          listTag = "ol";
+        }
+        out.push(`<li>${parseInline(ordered[1])}</li>`);
+        continue;
+      }
+
+      if (!line.trim()) {
+        flushParagraph();
+        flushList();
+        continue;
+      }
+
+      paragraph.push(line.trim());
+    }
+
+    flushParagraph();
+    flushList();
+    flushCode();
+    return out.join("\n");
+  }
+
+  async function fetchDoc(doc) {
+    if (docCache.has(doc.id)) return docCache.get(doc.id);
+    const response = await fetch(doc.file, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const md = await response.text();
+    docCache.set(doc.id, md);
+    return md;
+  }
+
+  function parseReferenceIndex(md) {
+    const lines = md.replace(/\r\n/g, "\n").split("\n");
+    const categories = [];
+    let currentCategory = null;
+    let currentGroup = null;
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      const h2 = line.match(/^##\s+(.*)$/);
+      const h3 = line.match(/^###\s+(.*)$/);
+      const h4 = line.match(/^####\s+(.*)$/);
+
+      if (h2) {
+        currentCategory = {
+          id: slugify(h2[1]),
+          title: h2[1],
+          start: i,
+          end: lines.length,
+          introEnd: lines.length,
+          macros: [],
+          groups: [],
+        };
+        categories.push(currentCategory);
+        currentGroup = null;
+        continue;
+      }
+
+      if (h3 && currentCategory) {
+        const raw = h3[1].trim();
+        if (!raw.startsWith("`")) {
+          currentGroup = {
+            id: slugify(raw),
+            title: raw,
+            start: i,
+            end: currentCategory.end,
+            introEnd: currentCategory.end,
+            macros: [],
+          };
+          currentCategory.groups.push(currentGroup);
+          continue;
+        }
+        currentGroup = null;
+        const macro = {
+          id: slugify(firstMacroToken(raw)),
+          title: stripCodeTicks(raw),
+          start: i,
+          end: currentCategory.end,
+        };
+        currentCategory.macros.push(macro);
+        continue;
+      }
+
+      if (h4 && currentCategory) {
+        const raw = h4[1].trim();
+        if (!raw.startsWith("`")) continue;
+        const macro = {
+          id: slugify(firstMacroToken(raw)),
+          title: stripCodeTicks(raw),
+          start: i,
+          end: currentCategory.end,
+        };
+        currentCategory.macros.push(macro);
+        if (currentGroup) currentGroup.macros.push(macro);
+      }
+    }
+
+    for (let i = 0; i < categories.length; i += 1) {
+      const cat = categories[i];
+      const nextCat = categories[i + 1];
+      cat.end = nextCat ? nextCat.start : lines.length;
+
+      const firstGroupStart = cat.groups.length ? cat.groups[0].start : lines.length;
+      const firstMacroStart = cat.macros.length ? cat.macros[0].start : lines.length;
+      cat.introEnd = Math.min(firstGroupStart, firstMacroStart, cat.end);
+
+      for (let j = 0; j < cat.macros.length; j += 1) {
+        const macro = cat.macros[j];
+        const nextMacro = cat.macros[j + 1];
+        macro.end = nextMacro ? nextMacro.start : cat.end;
+      }
+
+      for (let j = 0; j < cat.groups.length; j += 1) {
+        const group = cat.groups[j];
+        const nextGroup = cat.groups[j + 1];
+        group.end = nextGroup ? nextGroup.start : cat.end;
+        const firstMacroStart = group.macros.length ? group.macros[0].start : group.end;
+        group.introEnd = Math.min(firstMacroStart, group.end);
+
+        for (let k = 0; k < group.macros.length; k += 1) {
+          const macro = group.macros[k];
+          const nextMacro = group.macros[k + 1];
+          macro.end = nextMacro ? nextMacro.start : group.end;
+        }
+      }
+    }
+
+    const firstCategoryStart = categories.length ? categories[0].start : lines.length;
+    return {
+      lines,
+      introStart: 0,
+      introEnd: firstCategoryStart,
+      categories,
+    };
+  }
+
+  function parseSectionIndex(md) {
+    const lines = md.replace(/\r\n/g, "\n").split("\n");
+    const sections = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const h2 = lines[i].match(/^##\s+(.*)$/);
+      if (!h2) continue;
+      sections.push({
+        id: slugify(h2[1]),
+        title: h2[1],
+        start: i,
+        end: lines.length,
+      });
+    }
+
+    for (let i = 0; i < sections.length; i += 1) {
+      const next = sections[i + 1];
+      sections[i].end = next ? next.start : lines.length;
+    }
+
+    const introEnd = sections.length ? sections[0].start : lines.length;
+    return { lines, introStart: 0, introEnd, sections };
+  }
+
+  function sliceLines(lines, start, end) {
+    return lines.slice(start, end).join("\n").trim();
+  }
+
+  function renderNameList(title, items) {
+    const safeTitle = escapeHtml(title);
+    const rows = items.map(item => {
+      const label = typeof item === "string" ? item : item.label;
+      const target = typeof item === "string" ? "" : (item.target || "");
+      const safeItem = escapeHtml(label);
+      const open = target ? `<a href="${escapeHtml(target)}">` : "";
+      const close = target ? `</a>` : "";
+      if (isMacroSignature(label)) {
+        return `<li>${open}<code class="macro-inline-wrapper"><span class="macro-inline-token">${safeItem}</span></code>${close}</li>`;
+      }
+      return `<li>${open}<code>${safeItem}</code>${close}</li>`;
+    }).join("\n");
+    return `
+<h2>${safeTitle}</h2>
+<ul>
+${rows}
+</ul>`.trim();
+  }
+
+  function routeFromHash() {
+    const raw = location.hash.replace(/^#/, "").trim();
+    if (!raw) return { docId: "overview" };
+    const [docId, categoryId, groupId, macroId] = raw.split("/");
+    return { docId, categoryId, groupId, macroId };
+  }
+
+  function buildSidebar(route) {
+    $list.innerHTML = "";
+
+    for (const doc of DOCS) {
+      if (doc.id !== "references") {
+        const index = sectionIndexes.get(doc.id);
+        const hasSections = !!doc.sectioned && !!index && index.sections.length > 0;
+        const docOpen = route.docId === doc.id && hasSections && !collapsedNodes.has(`doc:${doc.id}`);
+        const li = document.createElement("li");
+        li.className = "tree-item";
+        li.innerHTML = `
+          <div class="tree-row${docOpen ? " open" : ""}">
+            <a class="tree-link${hasSections ? " expandable" : ""}${route.docId === doc.id && !route.categoryId ? " active" : ""}" href="#${doc.id}" data-key="doc:${doc.id}" data-target="#${doc.id}"><span class="tree-label">${doc.title}</span></a>
+          </div>
+        `;
+
+        if (hasSections) {
+          const children = document.createElement("ul");
+          children.className = `tree-children${docOpen ? " open" : ""}`;
+          for (const section of index.sections) {
+            const child = document.createElement("li");
+            const active = route.docId === doc.id && route.categoryId === section.id;
+            child.innerHTML = `
+              <div class="tree-row${active ? " open" : ""}">
+                <a class="tree-link leaf-link${active ? " active" : ""}" href="#${doc.id}/${section.id}" data-key="section:${doc.id}/${section.id}" data-target="#${doc.id}/${section.id}">${section.title}</a>
+              </div>
+            `;
+            children.appendChild(child);
+          }
+          li.appendChild(children);
+        }
+
+        $list.appendChild(li);
+        continue;
+      }
+
+      const li = document.createElement("li");
+      li.className = "tree-item";
+      const refOpen = route.docId === "references" && !collapsedNodes.has("doc:references");
+      li.innerHTML = `
+        <div class="tree-row${refOpen ? " open" : ""}">
+          <a class="tree-link expandable${route.docId === "references" && !route.categoryId ? " active" : ""}" href="#references" data-key="doc:references" data-target="#references"><span class="tree-label">References</span></a>
+        </div>
+      `;
+
+      const children = document.createElement("ul");
+      children.className = `tree-children${refOpen ? " open" : ""}`;
+
+      if (referencesIndex) {
+        for (const category of referencesIndex.categories) {
+          const catLi = document.createElement("li");
+          const catOpen = route.docId === "references" && route.categoryId === category.id && !collapsedNodes.has(`cat:${category.id}`);
+          const hasGroups = category.groups.length > 0;
+          const categoryMacroId = hasGroups ? route.macroId : (route.macroId || route.groupId);
+          catLi.innerHTML = `
+            <div class="tree-row${catOpen ? " open" : ""}">
+              <a class="tree-link category-link${hasGroups || category.macros.length ? " expandable" : ""}${catOpen && !(hasGroups ? route.groupId : categoryMacroId) ? " active" : ""}" href="#references/${category.id}" data-key="cat:${category.id}" data-target="#references/${category.id}">${category.title}</a>
+            </div>
+          `;
+
+          const macroList = document.createElement("ul");
+          macroList.className = `tree-children${catOpen ? " open" : ""}`;
+
+          if (hasGroups) {
+            for (const group of category.groups) {
+              const groupLi = document.createElement("li");
+              const groupHasChildren = group.macros.length > 0;
+              const groupOpen = groupHasChildren && route.docId === "references" && route.categoryId === category.id && route.groupId === group.id && !collapsedNodes.has(`group:${category.id}/${group.id}`);
+              groupLi.innerHTML = `
+                <div class="tree-row${groupOpen ? " open" : ""}">
+                  <a class="tree-link branch-link${groupHasChildren ? " expandable" : ""}${route.docId === "references" && route.categoryId === category.id && route.groupId === group.id && !route.macroId ? " active" : ""}" href="#references/${category.id}/${group.id}" data-key="group:${category.id}/${group.id}" data-target="#references/${category.id}/${group.id}">${group.title}</a>
+                </div>
+              `;
+
+              const subMacroList = document.createElement("ul");
+              subMacroList.className = `tree-children${groupOpen ? " open" : ""}`;
+
+              for (const macro of group.macros) {
+                const macroLi = document.createElement("li");
+                const active = route.docId === "references" && route.categoryId === category.id && route.groupId === group.id && route.macroId === macro.id;
+                macroLi.innerHTML = `
+                  <div class="tree-row${active ? " open" : ""}">
+                    <a class="tree-link leaf-link${active ? " active" : ""}" href="#references/${category.id}/${group.id}/${macro.id}" data-key="macro:${category.id}/${group.id}/${macro.id}" data-target="#references/${category.id}/${group.id}/${macro.id}">${firstMacroToken(macro.title)}</a>
+                  </div>
+                `;
+                subMacroList.appendChild(macroLi);
+              }
+
+              groupLi.appendChild(subMacroList);
+              macroList.appendChild(groupLi);
+            }
+          } else {
+            for (const macro of category.macros) {
+              const macroLi = document.createElement("li");
+              const active = route.docId === "references" && route.categoryId === category.id && categoryMacroId === macro.id;
+              macroLi.innerHTML = `
+                <div class="tree-row${active ? " open" : ""}">
+                  <a class="tree-link leaf-link${active ? " active" : ""}" href="#references/${category.id}/${macro.id}" data-key="macro:${category.id}/${macro.id}" data-target="#references/${category.id}/${macro.id}">${firstMacroToken(macro.title)}</a>
+                </div>
+              `;
+              macroList.appendChild(macroLi);
+            }
+          }
+
+          catLi.appendChild(macroList);
+          children.appendChild(catLi);
+        }
+      }
+
+      li.appendChild(children);
+      $list.appendChild(li);
+    }
+  }
+
+  function renderSelection(route, docs) {
+    const doc = DOCS.find(x => x.id === route.docId) ?? DOCS[0];
+
+    if (doc.id !== "references") {
+      const index = sectionIndexes.get(doc.id);
+      if (doc.sectioned && index && index.sections.length > 0) {
+        if (!route.categoryId) {
+          $title.textContent = doc.title.toUpperCase();
+          const intro = sliceLines(index.lines, index.introStart, index.introEnd);
+          const names = index.sections.map(section => ({ label: section.title, target: `#${doc.id}/${section.id}` }));
+          const listHtml = names.length ? renderNameList("Contents", names) : "";
+          $content.innerHTML = `${renderMarkdown(intro)}${listHtml ? `\n${listHtml}` : ""}`;
+          $status.textContent = `loaded ${doc.file}`;
+          return;
+        }
+
+        const section = index.sections.find(x => x.id === route.categoryId);
+        if (!section) {
+          $title.textContent = doc.title.toUpperCase();
+          $content.innerHTML = "<p>Unknown section.</p>";
+          $status.textContent = "unknown section";
+          return;
+        }
+
+        $title.textContent = `${doc.title.toUpperCase()} / ${section.title.toUpperCase()}`;
+        $content.innerHTML = renderMarkdown(sliceLines(index.lines, section.start, section.end));
+        $status.textContent = `loaded ${section.title}`;
+        return;
+      }
+
+      $title.textContent = doc.title.toUpperCase();
+      $content.innerHTML = renderMarkdown(docs.get(doc.id));
+      $status.textContent = `loaded ${doc.file}`;
+      return;
+    }
+
+    if (!referencesIndex) {
+      $title.textContent = "REFERENCES";
+      $content.innerHTML = "<p>Unable to build the reference index.</p>";
+      $status.textContent = "index error";
+      return;
+    }
+
+    if (!route.categoryId) {
+      $title.textContent = "REFERENCES";
+      $content.innerHTML = renderMarkdown(sliceLines(referencesIndex.lines, referencesIndex.introStart, referencesIndex.introEnd));
+      $status.textContent = "loaded references";
+      return;
+    }
+
+    const category = referencesIndex.categories.find(x => x.id === route.categoryId);
+    if (!category) {
+      $title.textContent = "REFERENCES";
+      $content.innerHTML = "<p>Unknown category.</p>";
+      $status.textContent = "unknown category";
+      return;
+    }
+
+    const effectiveGroupId = (!route.macroId && category.groups.length === 0) ? null : route.groupId;
+    const effectiveMacroId = (!route.macroId && category.groups.length === 0) ? route.groupId : route.macroId;
+
+    if (!effectiveGroupId && !effectiveMacroId) {
+      $title.textContent = `REFERENCES / ${category.title.toUpperCase()}`;
+      const intro = sliceLines(referencesIndex.lines, category.start, category.introEnd);
+      const names = category.groups.length
+        ? category.groups.map(x => ({ label: x.title, target: `#references/${category.id}/${x.id}` }))
+        : category.macros.map(x => ({ label: firstMacroToken(x.title), target: `#references/${category.id}/${x.id}` }));
+      const listHtml = names.length ? renderNameList("Contents", names) : "";
+      $content.innerHTML = `${renderMarkdown(intro)}${listHtml ? `\n${listHtml}` : ""}`;
+      $status.textContent = `loaded ${category.title}`;
+      return;
+    }
+
+    if (effectiveGroupId && !effectiveMacroId) {
+      const group = category.groups.find(x => x.id === effectiveGroupId);
+      if (!group) {
+        $title.textContent = `REFERENCES / ${category.title.toUpperCase()}`;
+        $content.innerHTML = "<p>Unknown subcategory.</p>";
+        $status.textContent = "unknown subcategory";
+        return;
+      }
+      $title.textContent = `REFERENCES / ${category.title.toUpperCase()} / ${group.title.toUpperCase()}`;
+      const intro = sliceLines(referencesIndex.lines, group.start, group.introEnd);
+      const names = group.macros.map(x => ({ label: firstMacroToken(x.title), target: `#references/${category.id}/${group.id}/${x.id}` }));
+      const listHtml = names.length ? renderNameList("Contents", names) : "";
+      $content.innerHTML = `${renderMarkdown(intro)}${listHtml ? `\n${listHtml}` : ""}`;
+      $status.textContent = `loaded ${group.title}`;
+      return;
+    }
+
+    const macro = category.macros.find(x => x.id === effectiveMacroId);
+    if (!macro) {
+      $title.textContent = `REFERENCES / ${category.title.toUpperCase()}`;
+      $content.innerHTML = "<p>Unknown macro.</p>";
+      $status.textContent = "unknown macro";
+      return;
+    }
+
+    const groupTitle = effectiveGroupId
+      ? (category.groups.find(x => x.id === effectiveGroupId)?.title ?? effectiveGroupId.replace(/-/g, " "))
+      : null;
+    $title.textContent = groupTitle
+      ? `REFERENCES / ${category.title.toUpperCase()} / ${groupTitle.toUpperCase()} / ${firstMacroToken(macro.title).toUpperCase()}`
+      : `REFERENCES / ${category.title.toUpperCase()} / ${firstMacroToken(macro.title).toUpperCase()}`;
+    $content.innerHTML = renderMarkdown(sliceLines(referencesIndex.lines, macro.start, macro.end));
+    $status.textContent = `loaded ${firstMacroToken(macro.title)}`;
+  }
+
+  async function loadRoute() {
+    const route = routeFromHash();
+    $status.textContent = "loading...";
+
+    try {
+      const docs = new Map(await Promise.all(
+        DOCS.map(async doc => [doc.id, await fetchDoc(doc)])
+      ));
+      sectionIndexes.clear();
+      for (const doc of DOCS) {
+        if (doc.id === "references") continue;
+        if (doc.sectioned) {
+          sectionIndexes.set(doc.id, parseSectionIndex(docs.get(doc.id)));
+        }
+      }
+      referencesIndex = parseReferenceIndex(docs.get("references"));
+      buildSidebar(route);
+      renderSelection(route, docs);
+    } catch (error) {
+      $title.textContent = "LOAD ERROR";
+      $content.innerHTML = `<p>Unable to load the documentation.</p><pre><code>${escapeHtml(String(error))}</code></pre>`;
+      $status.textContent = "load error";
+    }
+  }
+
+  window.addEventListener("hashchange", () => {
+    loadRoute();
+  });
+
+  $list.addEventListener("click", event => {
+    const link = event.target.closest("a.tree-link");
+    if (!link) return;
+
+    const target = link.dataset.target;
+    const key = link.dataset.key;
+    const current = location.hash || "#overview";
+    const isExpandable = link.classList.contains("expandable");
+
+    if (target === current && isExpandable) {
+      event.preventDefault();
+      if (collapsedNodes.has(key)) {
+        collapsedNodes.delete(key);
+      } else {
+        collapsedNodes.add(key);
+      }
+      buildSidebar(routeFromHash());
+      return;
+    }
+
+    if (target.startsWith("#references")) {
+      collapsedNodes.delete("doc:references");
+    }
+
+    const docSectionMatch = target.match(/^#([a-z0-9-]+)\/([^/]+)$/);
+    if (docSectionMatch) {
+      const matchedDoc = DOCS.find(doc => doc.id === docSectionMatch[1] && doc.sectioned);
+      if (matchedDoc) {
+        collapsedNodes.delete(`doc:${matchedDoc.id}`);
+      }
+    }
+
+    const categoryMatch = target.match(/^#references\/([^/]+)/);
+    if (categoryMatch) {
+      collapsedNodes.delete(`cat:${categoryMatch[1]}`);
+    }
+
+    const groupMatch = target.match(/^#references\/([^/]+)\/([^/]+)(?:\/|$)/);
+    if (groupMatch) {
+      collapsedNodes.delete(`group:${groupMatch[1]}/${groupMatch[2]}`);
+    }
+  });
+
+  loadRoute();
+</script>
+</body>
+</html>
