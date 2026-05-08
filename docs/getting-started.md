@@ -336,6 +336,8 @@ done:
 
 `IRANDOM dest, low, high` returns a random integer in `[low, high)` and stores it in `dest`. `RANDOM24 dest` returns a random 24-bit value, which is useful as a packed `0x00RRGGBB` color.
 
+For floating-point values, use `IRANDOMF dest, low, high` with raw IEEE-754 float bit patterns, or `RANDOMF dest, low, high` with float registers. For example, `IRANDOMF fs0, 0x00000000, 0x3f800000` stores a random float in `[0.0, 1.0)`.
+
 ## 13. Animation
 
 ```asm

@@ -940,6 +940,28 @@ Register version of `IRANDOM`.
 RANDOM t0, s0, s1
 ```
 
+#### `IRANDOMF dest, low, high`
+
+Random float in `[low, high)`. Immediate float values are raw IEEE-754 bit patterns.
+
+- Parameters: `freg, fimm-bits, fimm-bits`
+- Returns in `dest`
+
+```asm
+IRANDOMF fs0, 0x00000000, 0x3f800000   # 0.0 <= fs0 < 1.0
+```
+
+#### `RANDOMF dest, low, high`
+
+Register version of `IRANDOMF`.
+
+- Parameters: `freg, freg, freg`
+- Returns in `dest`
+
+```asm
+RANDOMF fs0, fs1, fs2
+```
+
 #### `RANDOM24 dest`
 
 Returns a 24-bit random integer.

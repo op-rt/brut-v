@@ -38,6 +38,8 @@ DISPLAY_NAMES = {
     "noise_pixels.asm":        "Noise2d",
     "noise_ring.asm":          "Noised Circle",
     "noise_ring_animated.asm": "Noised Circle (Animation)",
+    "bouncing_circle.asm":     "Bouncing Circle",
+    "rotating_cube.asm":       "Rotating Cube",
     "automaton.asm":           "Automaton",
     "maze.asm":                "Maze",
     "maze_unicursal.asm":      "Maze (unicursal)",
