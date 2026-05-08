@@ -300,17 +300,6 @@ Clears the internal vertex buffer.
 BEGINSHAPE
 ```
 
-#### `VERTEX x, y`
-
-Adds one point to the current shape buffer.
-
-- Parameters: `reg, reg`
-- Notes: the point is transformed by the current transform matrix; there is currently no immediate-form `IVERTEX`
-
-```asm
-VERTEX s0, s1
-```
-
 #### `ENDSHAPE close`
 
 Finalizes the current shape.
@@ -321,6 +310,28 @@ Finalizes the current shape.
 
 ```asm
 ENDSHAPE 1
+```
+
+#### `VERTEX x, y`
+
+Adds one point to the current shape buffer.
+
+- Parameters: `reg, reg`
+- Notes: the point is transformed by the current transform matrix
+
+```asm
+VERTEX s0, s1
+```
+
+#### `IVERTEX x, y`
+
+Adds one point to the current shape buffer using immediate coordinates.
+
+- Parameters: `imm, imm`
+- Notes: this is the immediate form of `VERTEX`
+
+```asm
+IVERTEX 256, 80
 ```
 
 #### `POLYGON start, end`
@@ -901,6 +912,14 @@ Distance between two float points.
 DISTF fs0, fs1, fs2, fs3, fs4
 ```
 
+#### `IDISTF dest, x1, y1, x2, y2`
+
+Immediate version of `DISTF`. Float immediates are raw IEEE-754 bit patterns.
+
+```asm
+IDISTF fs0, 0x00000000, 0x00000000, 0x43800000, 0x43800000
+```
+
 ### Random
 
 #### `IRANDOM dest, low, high`
@@ -942,12 +961,28 @@ RANDOM24 t0
 NOISE1D fs1, fs0
 ```
 
+#### `INOISE1D dest, x`
+
+Immediate version of `NOISE1D`. The float immediate is a raw IEEE-754 bit pattern.
+
+```asm
+INOISE1D fs1, 0x3f800000
+```
+
 #### `NOISE2D dest, x, y`
 
 2D Perlin-style noise.
 
 ```asm
 NOISE2D fs2, fs0, fs1
+```
+
+#### `INOISE2D dest, x, y`
+
+Immediate version of `NOISE2D`. Float immediates are raw IEEE-754 bit patterns.
+
+```asm
+INOISE2D fs2, 0x3f800000, 0x40000000
 ```
 
 #### `NOISE_SEED seed`
@@ -1026,33 +1061,17 @@ STORE_POINTF fs0, fs1, s0, s1
 
 Prints an integer register followed by a newline.
 
-```asm
-PRINT_REG s0
-```
-
 ### `PRINT_HEX reg`
 
 Prints an integer register in hexadecimal.
-
-```asm
-PRINT_HEX s0
-```
 
 ### `PRINT_REGF freg`
 
 Prints a float register in decimal.
 
-```asm
-PRINT_REGF fs0
-```
-
 ### `PRINT_HEXF freg`
 
 Prints the IEEE-754 bits of a float register in hexadecimal.
-
-```asm
-PRINT_HEXF fs0
-```
 
 ## Practical Notes
 

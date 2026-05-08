@@ -10,9 +10,7 @@
 
   @font-face {
     font-family: "BB Manual Mono Pro";
-    src:
-      url("../fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2"),
-      url("../fonts/BB_Manual_Mono_Pro_TX_Regular.otf") format("opentype");
+    src: url("../fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -394,11 +392,11 @@
   .macro-line {
     background: #585858;
     color: #ffffff;
-    padding: 0 4px;
+    box-shadow: -4px 0 0 #585858, 4px 0 0 #585858;
   }
 
-  .code-comment {
-    color: #9A9A9A;
+  #content .code-comment {
+    color: #898989;
   }
 
   .snippet-box {
@@ -525,13 +523,13 @@
     "ISIZE","BACKGROUND","IBACKGROUND","POINT","IPOINT","PIXEL","IPIXEL","PIXEL_RGB","IPIXEL_RGB",
     "IMAGE","IIMAGE","IMAGE_1BPP_2X","IIMAGE_1BPP_2X","LINE","ILINE","RECT","IRECT","RECT_ROUNDED",
     "IRECT_ROUNDED","CIRCLE","ICIRCLE","ELLIPSE","IELLIPSE","ARC","IARC","TRIANGLE","ITRIANGLE",
-    "BEGINSHAPE","VERTEX","ENDSHAPE","POLYGON","IPOLYGON","POLYLINE","IPOLYLINE","STROKE","ISTROKE",
+    "BEGINSHAPE","ENDSHAPE","VERTEX","IVERTEX","POLYGON","IPOLYGON","POLYLINE","IPOLYLINE","STROKE","ISTROKE",
     "STROKE_RGB","ISTROKE_RGB","NO_STROKE","STROKE_WEIGHT","ISTROKE_WEIGHT","STROKE_CAP","ISTROKE_CAP",
     "TEXT_SIZE","ITEXT_SIZE","TEXT","TEXT_WIDTH","TEXT_HEIGHT","FONT","FILL","IFILL","FILL_RGB",
     "IFILL_RGB","NO_FILL","IRANDOM","RANDOM","RANDOM24","COS","SIN","TAN","ATAN","ATAN2","ASIN",
     "ACOS","LERP","NORM","MAP","TRANSLATE","ITRANSLATE","SCALE","ISCALE","ROTATE","IROTATE","RADIANS",
     "DEGREES","MIN","MAX","ABS","SQRT","CONSTRAIN","MINF","MAXF","ABSF","SQRTF","ROUND","FLOOR","CEIL",
-    "LOG","NOISE1D","NOISE2D","NOISE_SEED","INOISE_SEED","DIST","IDIST","DISTF","LOAD_POINT",
+    "LOG","NOISE1D","INOISE1D","NOISE2D","INOISE2D","NOISE_SEED","INOISE_SEED","DIST","IDIST","DISTF","IDISTF","LOAD_POINT",
     "STORE_POINT","LOAD_POINTF","STORE_POINTF","PUSH_MATRIX","POP_MATRIX","REGISTER_DRAW","LOOP",
     "NOLOOP","FRAMECOUNT","PRINT_REG","PRINT_HEX","PRINT_REGF","PRINT_HEXF"
   ]);
@@ -584,30 +582,56 @@
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
   }
 
+  function splitCodeComment(line) {
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === "\"") {
+        inString = !inString;
+        continue;
+      }
+      if (ch === "#" && !inString) {
+        return [line.slice(0, i), line.slice(i)];
+      }
+    }
+
+    return [line, ""];
+  }
+
   function renderCodeBlock(raw) {
     return raw.split("\n").map(line => {
-      const match = line.match(/^(\s*)([A-Z][A-Z0-9_]*)(.*)$/);
+      const [code, comment] = splitCodeComment(line);
+      const renderedComment = comment ? `<span class="code-comment">${escapeHtml(comment)}</span>` : "";
+      const match = code.match(/^(\s*)([A-Z][A-Z0-9_]*)(.*)$/);
       if (!match) {
-        return escapeHtml(line);
+        return `${escapeHtml(code)}${renderedComment}`;
       }
 
       const [, indent, token, rest] = match;
       if (!MACRO_NAMES.has(token)) {
-        return escapeHtml(line);
+        return `${escapeHtml(code)}${renderedComment}`;
       }
 
-      const commentIndex = rest.indexOf("#");
-      const beforeComment = commentIndex >= 0 ? rest.slice(0, commentIndex) : rest;
-      const comment = commentIndex >= 0 ? rest.slice(commentIndex) : "";
-      const trimmedInstructionRest = beforeComment.replace(/\s+$/, "");
-      const trailingSpaces = beforeComment.slice(trimmedInstructionRest.length);
+      const trimmedInstructionRest = rest.replace(/\s+$/, "");
+      const trailingSpaces = rest.slice(trimmedInstructionRest.length);
       const highlighted = `${token}${trimmedInstructionRest}`;
 
       return (
         `${escapeHtml(indent)}` +
         `<span class="macro-line">${escapeHtml(highlighted)}</span>` +
         `${escapeHtml(trailingSpaces)}` +
-        `${comment ? `<span class="code-comment">${escapeHtml(comment)}</span>` : ""}`
+        `${renderedComment}`
       );
     }).join("\n");
   }

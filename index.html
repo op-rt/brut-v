@@ -11,9 +11,7 @@
   /* â”€â”€ BB Manual Mono Pro â€” embedded so the page works offline. â”€â”€ */
   @font-face {
     font-family: "BB Manual Mono Pro";
-    src:
-      url("./fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2"),
-      url("./fonts/BB_Manual_Mono_Pro_TX_Regular.otf") format("opentype");
+    src: url("./fonts/BB_Manual_Mono_Pro_TX_Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -105,15 +103,16 @@
     grid-area: canvas;
     position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     background: #ffffff;
     border: 2px solid #000;
     margin: 8px 8px 18px 18px;
     padding: 18px 14px 14px;
     overflow: visible;
     min-width: 0;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: auto;
     align-self: start;
   }
   #canvas-panel h2 {
@@ -132,17 +131,40 @@
     z-index: 2;
     text-transform: uppercase;
   }
+  #canvas-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(100%, calc(100vh - 220px));
+    min-width: 0;
+  }
   #output {
     /* The bitmap is internally 512Ã—512; CSS rescales it to fit the panel
        while keeping the aspect ratio square. `pixelated` keeps it sharp. */
     width: 100%;
     height: auto;
     aspect-ratio: 1 / 1;
-    min-width: 400px;
+    min-width: 0;
     max-width: 100%;
     max-height: 100%;
     image-rendering: pixelated;
     display: block;
+  }
+  #debug-console {
+    width: 100%;
+    min-height: 96px;
+    max-height: 132px;
+    overflow-y: auto;
+    background: var(--editor-bg);
+    color: #1a1a1a;
+    padding: 8px 10px;
+    font-family: var(--font-ui);
+    font-size: var(--status-size);
+    line-height: 20px;
+    white-space: pre-wrap;
+  }
+  #debug-console.empty {
+    color: var(--muted);
   }
 
   /* â”€â”€ Editor â”€â”€ */
@@ -369,7 +391,11 @@
       width: auto;
       max-width: min(100%, 21cm);
       justify-self: stretch;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: auto;
+    }
+
+    #canvas-stack {
+      width: 100%;
     }
 
     #output {
@@ -409,7 +435,10 @@
 
   <div id="canvas-panel">
     <h2>CANVAS</h2>
-    <canvas id="output" width="512" height="512"></canvas>
+    <div id="canvas-stack">
+      <canvas id="output" width="512" height="512"></canvas>
+      <div id="debug-console" class="empty" aria-live="polite">debug output</div>
+    </div>
   </div>
 
   <div id="editor-wrap">
@@ -438,6 +467,7 @@
   const ctx2d   = canvas.getContext("2d");
   const $status = document.getElementById("status");
   const $err    = document.getElementById("error-box");
+  const $console = document.getElementById("debug-console");
   const $codeTitle = document.querySelector("#editor-wrap h2");
   const btnAsm  = document.getElementById("btn-assemble");
   const btnRun  = document.getElementById("btn-run");
@@ -448,6 +478,14 @@
   const sim       = new RV32IF();
   let simRunning  = false;
   let assembled   = false;
+  let assembledSymbols = null;
+  let assembledIsAnimated = false;
+  const consoleLines = [];
+  const MAX_CONSOLE_LINES = 200;
+  const DIAGNOSTIC_OWNER = "brutv";
+  const STATIC_MAX_STEPS = 500_000_000;
+  const RUN_CHUNK_SIZE = 200_000;
+  sim.onConsole = appendConsole;
   const FRAMEWORK_MACROS = new Set(
     [...new Set(
       [...(CORE_FILES["macros.s"] ?? "").matchAll(/\.macro\s+([A-Za-z_][A-Za-z0-9_]*)/g)]
@@ -458,6 +496,7 @@
 
   const DEFAULT_SKETCH = "maze_unicursal.asm";
   const DEFAULT_SOURCE = SKETCH_FILES[DEFAULT_SKETCH] ?? Object.values(SKETCH_FILES)[0];
+  let currentSourceName = DEFAULT_SKETCH;
 
   // Monaco setup
   const monacoReady = new Promise(resolve => {
@@ -629,13 +668,18 @@
   function loadSketch(name) {
     const src = SKETCH_FILES[name];
     if (!src) { setStatus(`unknown sketch: ${name}`, "err"); return; }
+    currentSourceName = name;
     updateCodeTitle(name);
     if (editor) {
       editor.setValue(src);
     }
     hideError();
+    clearConsole();
+    clearEditorDiagnostics();
     setStatus("ready");
     assembled = false;
+    assembledSymbols = null;
+    assembledIsAnimated = false;
   }
 
   // Assemble + run
@@ -644,26 +688,37 @@
     simStop();
     setStatus("assembling...", "run");
     hideError();
+    clearConsole();
+    clearEditorDiagnostics();
 
     const source = editor.getValue();
     const t0 = performance.now();
     let r;
-    try { r = assemble(source); }
+    try { r = assemble(source, { mainName: currentSourceName }); }
     catch (e) {
+      const msg = e.stack ?? String(e);
       setStatus("assemble crashed", "err");
-      showError(e.stack ?? String(e));
+      reportConsoleDiagnostics("asm-crash", [msg]);
+      markEditorDiagnostics([msg]);
+      showError(msg);
       return;
     }
     const dt = (performance.now() - t0).toFixed(0);
 
     if (r.errors && r.errors.length) {
       setStatus("assemble error", "err");
+      reportAssemblerDiagnostics(r.errors);
       showError(r.errors.join("\n"));
       return;
     }
 
     sim.load(r.text, r.data);
     assembled = true;
+    assembledSymbols = r.symbols ?? null;
+    assembledIsAnimated = hasRegisterDraw(r);
+    if (r.warnings && r.warnings.length) {
+      reportConsoleDiagnostics("asm-warning", r.warnings);
+    }
     setStatus(`assembled (${r.text.length}B text - ${r.data.length}B data - ${dt}ms)`, "ok");
     if (autoRun) simRun();
   }
@@ -671,6 +726,8 @@
   function simRun() {
     if (simRunning) return;
     if (!assembled) { doAssemble(true); return; }
+    clearConsole();
+    hideError();
     simRunning = true;
     btnRun.disabled  = true;
     btnAsm.disabled  = true;
@@ -691,9 +748,29 @@
       btnAsm.disabled  = false;
       btnStop.disabled = true;
       setStatus("sim error", "err");
+      appendConsole("runtime-error", msg);
       showError("Simulator error:\n" + msg);
     };
-    sim.runAsync(renderFrame, 500_000_000, 200_000);
+
+    const frameCounterAddr = assembledSymbols?.get?.("frame_count");
+    const renderOnFrameBoundary = assembledIsAnimated && frameCounterAddr != null;
+    sim.watchFrameCounter(renderOnFrameBoundary ? frameCounterAddr : null);
+    sim.runAsync(renderFrame,
+      assembledIsAnimated ? Infinity : STATIC_MAX_STEPS,
+      RUN_CHUNK_SIZE,
+      {
+        renderOnFrameBoundary,
+        onLimit: (steps) => {
+          simRunning = false;
+          btnRun.disabled  = false;
+          btnAsm.disabled  = false;
+          btnStop.disabled = true;
+          setStatus("step limit reached", "err");
+          const msg = `Step limit reached after ${steps.toLocaleString()} instructions. The sketch is probably stuck in a loop.`;
+          appendConsole("runtime-warning", msg);
+          showError(msg);
+        },
+      });
   }
 
   function simStop() {
@@ -702,6 +779,12 @@
     btnRun.disabled  = false;
     btnAsm.disabled  = false;
     btnStop.disabled = true;
+  }
+
+  function hasRegisterDraw(result) {
+    return (result.lines ?? []).some(line =>
+      line.file !== "core.s" && /\bcall\s+register_draw\b/.test(line.text)
+    );
   }
 
   function renderFrame() {
@@ -713,9 +796,105 @@
   function setStatus(msg, cls = "") { $status.textContent = msg; $status.className = cls; }
   function showError(msg) { $err.textContent = msg; $err.classList.add("visible"); }
   function hideError()    { $err.classList.remove("visible"); }
+  function clearConsole() {
+    consoleLines.length = 0;
+    renderConsole();
+  }
+  function appendConsole(kind, text) {
+    consoleLines.push(`[${kind}] ${String(text)}`);
+    while (consoleLines.length > MAX_CONSOLE_LINES) consoleLines.shift();
+    renderConsole();
+  }
+  function renderConsole() {
+    const empty = consoleLines.length === 0;
+    $console.textContent = empty ? "debug output" : consoleLines.join("\n");
+    $console.classList.toggle("empty", empty);
+    $console.scrollTop = $console.scrollHeight;
+  }
+  function reportAssemblerDiagnostics(diagnostics) {
+    reportConsoleDiagnostics("asm-error", diagnostics);
+    markEditorDiagnostics(diagnostics);
+  }
+  function reportConsoleDiagnostics(kind, diagnostics) {
+    for (const diagnostic of diagnostics) {
+      appendConsole(kind, diagnostic);
+    }
+  }
+  function clearEditorDiagnostics() {
+    if (!editor || typeof monaco === "undefined") return;
+    const model = editor.getModel();
+    if (!model) return;
+    monaco.editor.setModelMarkers(model, DIAGNOSTIC_OWNER, []);
+  }
+  function markEditorDiagnostics(diagnostics) {
+    if (!editor || typeof monaco === "undefined") return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const markers = [];
+    let firstLine = null;
+    for (const diagnostic of diagnostics) {
+      const marker = diagnosticToEditorMarker(String(diagnostic), model);
+      if (!marker) continue;
+      markers.push(marker);
+      if (firstLine === null) firstLine = marker.startLineNumber;
+    }
+
+    monaco.editor.setModelMarkers(model, DIAGNOSTIC_OWNER, markers);
+    if (firstLine !== null) {
+      editor.revealLineInCenter(firstLine);
+      editor.setPosition({ lineNumber: firstLine, column: 1 });
+    }
+  }
+  function diagnosticToEditorMarker(text, model) {
+    const primary = parsePrimaryDiagnostic(text);
+    const diagnostic = primary && isEditorDiagnosticFile(primary.file)
+      ? primary
+      : parseCallSiteDiagnostic(text);
+    if (!diagnostic || !isEditorDiagnosticFile(diagnostic.file)) return null;
+
+    const lineNumber = Math.max(1, Math.min(diagnostic.lineNumber, model.getLineCount()));
+    return {
+      startLineNumber: lineNumber,
+      startColumn: 1,
+      endLineNumber: lineNumber,
+      endColumn: model.getLineMaxColumn(lineNumber),
+      message: diagnostic.message || text,
+      severity: monaco.MarkerSeverity.Error,
+    };
+  }
+  function parsePrimaryDiagnostic(text) {
+    const match = text.match(/^([^:\n]+):(\d+)(?::\d+)?:\s*(.*)$/);
+    if (!match) return null;
+    return {
+      file: match[1],
+      lineNumber: Number(match[2]),
+      message: match[3] || text,
+    };
+  }
+  function parseCallSiteDiagnostic(text) {
+    const match = text.match(/\(called from ([^:\n()]+):(\d+)\)/);
+    if (!match) return null;
+    return {
+      file: match[1],
+      lineNumber: Number(match[2]),
+      message: text,
+    };
+  }
+  function isEditorDiagnosticFile(file) {
+    return file === currentSourceName
+      || file === "sketch.asm"
+      || file.endsWith("/" + currentSourceName)
+      || file.endsWith("\\" + currentSourceName)
+      || file.endsWith("/sketch.asm")
+      || file.endsWith("\\sketch.asm");
+  }
 
   monacoReady.then(() => {
-    editor.onDidChangeModelContent(() => { assembled = false; });
+    editor.onDidChangeModelContent(() => {
+      assembled = false;
+      clearEditorDiagnostics();
+    });
   });
 
   btnAsm .addEventListener("click", () => doAssemble(false));

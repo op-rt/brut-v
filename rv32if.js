@@ -12,6 +12,7 @@
  *   a7=4   print string (debug)
  *   a7=10  exit
  *   a7=30  time → Date.now() dans a0
+ *   a7=34  print int hex (debug)
  *   a7=35  rand int [a0..a1] → a0
  */
 
@@ -37,6 +38,10 @@ export class RV32IF {
         this.running = false;
         this.onExit  = null;
         this.onError = null;
+        this.onConsole = null;
+        this._frameCounterAddr = 0;
+        this._frameCounterValue = 0;
+        this._frameBoundary = false;
     }
 
     // ── Mapping adresse → offset dans le buffer ───────────────────────────────
@@ -59,7 +64,16 @@ export class RV32IF {
     r32u(a){ return this._dv.getUint32(this._off(a), true); }
     w8 (a,v){ this._dv.setUint8 (this._off(a), v); }
     w16(a,v){ this._dv.setUint16(this._off(a), v, true); }
-    w32(a,v){ this._dv.setInt32 (this._off(a), v, true); }
+    w32(a,v){
+        this._dv.setInt32(this._off(a), v, true);
+        if (this._frameCounterAddr && (a >>> 0) === this._frameCounterAddr) {
+            const next = v | 0;
+            if (next !== this._frameCounterValue) {
+                this._frameCounterValue = next;
+                this._frameBoundary = true;
+            }
+        }
+    }
     rf32(a) { return this._dv.getFloat32(this._off(a), true); }
     wf32(a,v){ this._dv.setFloat32(this._off(a), v, true); }
 
@@ -88,6 +102,7 @@ export class RV32IF {
         this.f.fill(0);
         this.pc      = TEXT_BASE;
         this.running = false;
+        this._frameBoundary = false;
 
         // sp = valeur par défaut RARS
         this.x[2] = 0x7FFFEFFC | 0;
@@ -103,6 +118,18 @@ export class RV32IF {
         const dataOff = BUF_DATA + (0x10008000 - DATA_BASE);
         for (let i = 0; i < dataBytes.length; i++)
             u8[dataOff + i] = dataBytes[i];
+    }
+
+    watchFrameCounter(addr) {
+        this._frameCounterAddr = addr == null ? 0 : (addr >>> 0);
+        this._frameBoundary = false;
+        this._frameCounterValue = this._frameCounterAddr ? this.r32(this._frameCounterAddr) : 0;
+    }
+
+    consumeFrameBoundary() {
+        const ready = this._frameBoundary;
+        this._frameBoundary = false;
+        return ready;
     }
 
     // ── Décodage et exécution d'une instruction ───────────────────────────────
@@ -333,11 +360,17 @@ export class RV32IF {
             { const lo = this.x[10], hi = this.x[11];
               this.x[10] = (Math.random() * (hi - lo) + lo) | 0; }
             break;
-          case 1:  console.log("[rv32i]", this.x[10]); break;
-          case 2:  console.log("[rv32f]", this.f[10]); break;
-          case 4:  { let s="",a=this.x[10]>>>0; try{while(true){const c=this.r8(a++);if(!c)break;s+=String.fromCharCode(c);}}catch(e){} console.log("[rv32s]",s); break; }
+          case 1:  this._debugPrint("rv32i", String(this.x[10])); break;
+          case 2:  this._debugPrint("rv32f", String(this.f[10])); break;
+          case 4:  { let s="",a=this.x[10]>>>0; try{while(true){const c=this.r8(a++);if(!c)break;s+=String.fromCharCode(c);}}catch(e){} this._debugPrint("rv32s", s); break; }
+          case 34: this._debugPrint("rv32h", "0x" + (this.x[10] >>> 0).toString(16).padStart(8, "0")); break;
           default: break; // syscall inconnu → ignoré
         }
+    }
+
+    _debugPrint(kind, text) {
+        if (this.onConsole) this.onConsole(kind, text);
+        else console.log(`[${kind}]`, text);
     }
 
     // ── Framebuffer → ImageData RGBA ─────────────────────────────────────────
@@ -376,31 +409,57 @@ export class RV32IF {
 
     // ── Lancement asynchrone (non-bloquant) ───────────────────────────────────
 
-    runAsync(onFrame, maxSteps = 500_000_000, chunkSize = 200_000) {
+    runAsync(onFrame, maxSteps = 500_000_000, chunkSize = 200_000, options = {}) {
         this.running = true;
         let total = 0;
+        const hasStepLimit = Number.isFinite(maxSteps);
+        const renderOnFrameBoundary = !!options.renderOnFrameBoundary;
 
         const tick = () => {
-            if (!this.running || total >= maxSteps) {
-                onFrame();
+            if (!this.running) {
+                return;
+            }
+            if (hasStepLimit && total >= maxSteps) {
+                this.running = false;
+                if (options.onLimit) options.onLimit(total);
+                onFrame({ reason: "limit", totalSteps: total });
                 return;
             }
 
             let steps = 0;
+            let frameReady = false;
             try {
                 while (this.running && steps < chunkSize) {
                     this.step();
                     steps++;
+                    total++;
+                    if (renderOnFrameBoundary && this.consumeFrameBoundary()) {
+                        frameReady = true;
+                        break;
+                    }
+                    if (hasStepLimit && total >= maxSteps) break;
                 }
             } catch(e) {
                 this.running = false;
                 if (this.onError) this.onError(e.message);
-                onFrame();
+                onFrame({ reason: "error", totalSteps: total });
                 return;
             }
 
-            total += steps;
-            onFrame();
+            if (hasStepLimit && total >= maxSteps && this.running) {
+                this.running = false;
+                if (options.onLimit) options.onLimit(total);
+                onFrame({ reason: "limit", totalSteps: total });
+                return;
+            }
+
+            if (!renderOnFrameBoundary || frameReady) {
+                onFrame({
+                    reason: frameReady ? "frame" : "chunk",
+                    steps,
+                    totalSteps: total,
+                });
+            }
             if (this.running) setTimeout(tick, 0);
         };
 

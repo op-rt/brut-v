@@ -13,8 +13,8 @@
 //      instruction (resolving %hi/%lo and label-relative jumps), and emit
 //      raw bytes for every data directive.
 //
-// This file is currently STAGE 1: the preprocessor. The remaining stages are
-// stubbed and will be filled in next.
+// This file implements the complete browser assembler pipeline used by the
+// static BRUT-V app.
 // =============================================================================
 
 import { CORE_FILES } from "./core-fs.js";
@@ -30,6 +30,7 @@ export function assemble(source, opts = {}) {
         lines = preprocess(source, {
             mainName: opts.mainName ?? "sketch.asm",
             resolveInclude: opts.resolveInclude ?? defaultResolveInclude,
+            autoIncludeCore: opts.autoIncludeCore !== false,
         });
     } catch (e) {
         errors.push(e.message ?? String(e));
@@ -96,6 +97,10 @@ function preprocess(source, opts) {
         resolveInclude: opts.resolveInclude,
     };
 
+    if (opts.autoIncludeCore && !hasCoreInclude(source)) {
+        const resolved = pp.resolveInclude("../core/core.s");
+        processFile(pp, resolved.name, resolved.source);
+    }
     processFile(pp, opts.mainName, source);
 
     // Apply .eqv substitutions to every emitted line. Macros and includes are
@@ -104,6 +109,17 @@ function preprocess(source, opts) {
         line.text = applyEqv(line.text, pp.eqv);
 
     return pp.out;
+}
+
+function hasCoreInclude(source) {
+    for (const rawLine of source.split(/\r?\n/)) {
+        const line = stripComment(rawLine);
+        const match = line.match(/^\s*\.include\s+"([^"]+)"\s*$/);
+        if (!match) continue;
+        const base = match[1].replace(/^.*[\\/]/, "");
+        if (base === "core.s") return true;
+    }
+    return false;
 }
 
 // ── per-file driver ────────────────────────────────────────────────────────
@@ -833,16 +849,24 @@ const F_REGS = new Map();
 // individual instruction encoders (because their semantics depend on context:
 // %hi attaches to a U-type, %lo to an I- or S-type, etc.).
 
-function evalIntExpr(text, ctx, line) {
+function evalIntExpr(text, ctx, line, opts = {}) {
     const t = text.trim();
+    const allowSymbols = opts.allowSymbols !== false;
     // Direct symbol or literal fast-path.
     const lit = parseLiteralInt(t);
     if (lit !== null) return lit | 0;
     const sym = ctx.symbols.get(t);
-    if (sym !== undefined) return sym | 0;
+    if (sym !== undefined) {
+        if (!allowSymbols) operandTypeErr(line, t);
+        return sym | 0;
+    }
     // Otherwise, full expression parser.
-    const v = parseExpr(t, ctx, line);
+    const v = parseExpr(t, ctx, line, opts);
     return v | 0;
+}
+
+function evalImmediateExpr(text, ctx, line) {
+    return evalIntExpr(text, ctx, line, { allowSymbols: false });
 }
 
 function parseLiteralInt(t) {
@@ -883,7 +907,8 @@ function floatToBits(f) {
 
 // Tiny recursive-descent expression parser for things like `BASE + 4` or
 // `LEN-1`. Everything is integer-only and 32-bit.
-function parseExpr(text, ctx, line) {
+function parseExpr(text, ctx, line, opts = {}) {
+    const allowSymbols = opts.allowSymbols !== false;
     const tk = tokeniseExpr(text);
     let i = 0;
     function peek() { return tk[i]; }
@@ -896,7 +921,10 @@ function parseExpr(text, ctx, line) {
         if (t === "+") return  parsePrimary() | 0;
         const lit = parseLiteralInt(t);
         if (lit !== null) return lit | 0;
-        if (ctx.symbols.has(t)) return ctx.symbols.get(t) | 0;
+        if (ctx.symbols.has(t)) {
+            if (!allowSymbols) operandTypeErr(line, t);
+            return ctx.symbols.get(t) | 0;
+        }
         err(line, `undefined symbol: ${t} (in expression: ${text})`);
     }
     function parseMul() {
@@ -981,7 +1009,7 @@ function resolveOperand(text, kind, ctx, it) {
             return op === "hi" ? hi20(addr) : lo12(addr);
         }
         if (op === "hi_imm" || op === "lo_imm") {
-            const addr = evalIntExpr(inner, ctx, it.line) | 0;
+            const addr = evalImmediateExpr(inner, ctx, it.line) | 0;
             return op === "hi_imm" ? hi20(addr) : lo12(addr);
         }
         if (op === "pcrel_hi") {
@@ -1006,7 +1034,7 @@ function resolveOperand(text, kind, ctx, it) {
                        : evalIntExpr(t, ctx, it.line);
         return ((target | 0) - it.pc) | 0;
     }
-    return evalIntExpr(t, ctx, it.line);
+    return evalImmediateExpr(t, ctx, it.line);
 }
 
 function hi20(v) {
@@ -1051,7 +1079,7 @@ function defShift(name, opcode, funct3, funct7) {
     INSTS.set(name, { encode(ops, it, ctx) {
         const rd  = reg(ops[0], it.line);
         const rs1 = reg(ops[1], it.line);
-        const sh  = evalIntExpr(ops[2], ctx, it.line) & 0x1F;
+        const sh  = evalImmediateExpr(ops[2], ctx, it.line) & 0x1F;
         return ((funct7 << 25) | (sh << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode) >>> 0;
     }});
 }
@@ -1302,6 +1330,17 @@ defFma("fnmadd.s", 0x4F);
 function err(line, msg) {
     if (line) throw new Error(`${line.file}:${line.lineNo}: ${msg}`);
     throw new Error(msg);
+}
+function operandTypeErr(line, operand) {
+    if (!line) throw new Error(`"${operand}": operand is of incorrect type`);
+    const column = operandColumn(line.text, operand);
+    if (column !== null)
+        throw new Error(`${line.file}:${line.lineNo}:${column}: "${operand}": operand is of incorrect type`);
+    throw new Error(`${line.file}:${line.lineNo}: "${operand}": operand is of incorrect type`);
+}
+function operandColumn(text, operand) {
+    const idx = String(text ?? "").indexOf(operand);
+    return idx === -1 ? null : idx + 1;
 }
 function hex(n) { return "0x" + (n >>> 0).toString(16).padStart(8, "0"); }
 function align(addr, n) { return (addr + n - 1) & ~(n - 1); }

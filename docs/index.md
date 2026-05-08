@@ -13,11 +13,9 @@ At the moment, the web environment is limited to a maximum canvas size of `512x5
 
 ## First Principles
 
-A BRUT-V sketch usually starts like this:
+A BRUT-V sketch usually starts like this. The web editor imports `core.s` automatically, so the sketch itself can start directly in `.text`:
 
 ```asm
-.include "../core/core.s"
-
 .text
 setup:
     ISIZE 512, 512
@@ -158,8 +156,6 @@ The built-in font is an 8x8 bitmap font, scaled by `TEXT_SIZE` or `ITEXT_SIZE`.
 To animate, define `draw` and register it from `setup`:
 
 ```asm
-.include "../core/core.s"
-
 .text
 setup:
     ISIZE 512, 512
