@@ -35,6 +35,7 @@ IFILL BLACK
 - `BLUE`
 - `RED`
 - `MAGENTA`
+- `ORANGE`
 
 ```asm
 IBACKGROUND WHITE
@@ -1025,13 +1026,15 @@ INOISE_SEED 42
 
 ## Runtime
 
-### `REGISTER_DRAW label`
+### `ANIMATE label`
 
 Registers a `draw` callback and enables animation-style execution.
 
 ```asm
-REGISTER_DRAW draw
+ANIMATE draw
 ```
+
+If `setup` and `draw` are contiguous code labels, a second `.text` before `draw:` is unnecessary. Section directives stay active until another section is selected.
 
 ### `FRAMECOUNT dest`
 
@@ -1157,6 +1160,6 @@ For animated sketches:
 ```asm
 setup:
     ISIZE 512, 512
-    REGISTER_DRAW draw
+    ANIMATE draw
     ret
 ```

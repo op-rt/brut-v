@@ -24,7 +24,7 @@ setup:
     ret
 ```
 
-The framework automatically calls `setup` once. If you also register a `draw` function with `REGISTER_DRAW draw`, BRUT-V enters an animation loop and calls `draw` once per frame.
+The framework automatically calls `setup` once. If you also register a `draw` function with `ANIMATE draw`, BRUT-V enters an animation loop and calls `draw` once per frame.
 
 ## Core Model
 
@@ -34,7 +34,7 @@ BRUT-V is built around a few simple ideas:
 - A global drawing state: `fill`, `stroke`, `stroke weight`, `text size`
 - A current transform matrix: `translation`, `rotation`, `scaling`
 - Immediate-mode drawing: each macro draws directly into the framebuffer
-- A small runtime for animation: `REGISTER_DRAW`, `FRAMECOUNT`, `LOOP`, `NOLOOP`
+- A small runtime for animation: `ANIMATE`, `FRAMECOUNT`, `LOOP`, `NOLOOP`
 
 ## Direct And Immediate Macros
 
@@ -89,6 +89,7 @@ Built-in constants from `config.s` include:
 - `BLUE`
 - `RED`
 - `MAGENTA`
+- `ORANGE`
 
 You can also build colors manually:
 
@@ -159,7 +160,7 @@ To animate, define `draw` and register it from `setup`:
 .text
 setup:
     ISIZE 512, 512
-    REGISTER_DRAW draw
+    ANIMATE draw
     ret
 
 draw:
@@ -167,9 +168,11 @@ draw:
     ret
 ```
 
+Section directives are sticky: the second `.text` before `draw:` is unnecessary unless the sketch switches to `.data` or another section between `setup` and `draw`.
+
 Useful runtime helpers:
 
-- `REGISTER_DRAW`
+- `ANIMATE`
 - `FRAMECOUNT`
 - `LOOP`
 - `NOLOOP`

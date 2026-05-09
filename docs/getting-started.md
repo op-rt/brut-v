@@ -344,7 +344,7 @@ For floating-point values, use `IRANDOMF dest, low, high` with raw IEEE-754 floa
 .text
 setup:
     ISIZE 512, 512
-    REGISTER_DRAW draw
+    ANIMATE draw
     li   s2, 256          # y position
     li   s3, 40           # radius
     ret
@@ -361,9 +361,11 @@ draw:
 
 This introduces the animation runtime:
 
-- `REGISTER_DRAW draw` enables the main loop
+- `ANIMATE draw` enables the main loop
 - `FRAMECOUNT` gives the current frame index
 - `s2` and `s3` keep the circle parameters between calls; `s` registers are for saved values, while `t` registers are temporary scratch registers
+
+Section directives are sticky: after `.text`, `draw:` can follow `setup` directly. Add another `.text` only if a `.data` block or another section appears between them.
 
 ## 14. Text
 
