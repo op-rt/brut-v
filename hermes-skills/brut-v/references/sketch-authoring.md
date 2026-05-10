@@ -186,6 +186,10 @@ For centered rank labels inside circles, use `ITEXT_SIZE 1`,
 `ITEXT_ALIGN CENTER, CENTER`, and `TEXT`.
 For selected/unselected styling, branch per element and set `ISTROKE BLACK` or
 `ISTROKE GREY` inside that branch before drawing the circle.
+For white circles, set `IFILL WHITE` or `NO_FILL` before the circle pass, then
+switch to `IFILL BLACK` before rank labels. Do not redraw every circle with one
+final black stroke after branching. Rank labels should be placed at the actual
+circle center coordinates; do not use manual x/y offsets to fake centering.
 
 ## Shape Construction
 

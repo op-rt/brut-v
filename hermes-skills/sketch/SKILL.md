@@ -42,14 +42,16 @@ BRUT-V, MCP, session ids, run ids, or media delivery.
    - the generated `sessionId`
    - the original brief in `prompt`
 9. If validation or rendering fails, correct the sketch once and render again.
-10. Build the absolute PNG path:
+10. Before accepting a rendered image, perform the source-level acceptance
+    checks below. If a check fails, repair the sketch and render again.
+11. Build the absolute PNG path:
 
 ```text
 /root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
 ```
 
-11. Verify that the PNG exists.
-12. If the render is OK, reply with exactly one media line and no other text:
+12. Verify that the PNG exists.
+13. If the render is OK, reply with exactly one media line and no other text:
 
 ```text
 MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
@@ -114,6 +116,9 @@ Respect visual constraints exactly:
 - unselected circles with grey stroke;
 - white circle fill when requested;
 - set stroke color and stroke weight inside the selected/unselected branch;
+- do not use black fill for white circles; set `IFILL WHITE` before drawing the
+  circles, then switch to `IFILL BLACK` only for text labels or other black
+  filled marks;
 - draw unselected and selected states from the `selected` array, never from a
   hardcoded visual pass.
 
@@ -122,9 +127,42 @@ For labels inside circles:
 - "small characters" means `ITEXT_SIZE 1` unless the user explicitly asks for
   larger text;
 - use `ITEXT_ALIGN CENTER, CENTER` before `TEXT` to center labels in the circle;
+- draw rank labels at the exact circle center coordinates loaded or computed
+  from the arrays; do not hand-offset x/y values to fake centering;
 - for two-digit labels, measure and center the whole string, do not place digits
   manually;
 - draw labels after circles and choose a fill color that remains legible.
+- if the prompt says "number them 112" while selecting 12 items, interpret it as
+  the range `1-12`, not as the literal label `112`.
+
+## Source-Level Acceptance Checks
+
+Do not rely only on the PNG looking non-blank. Before the final `MEDIA:` line,
+inspect the generated source and reject it if the user's constraints are not
+represented in assembly.
+
+For selected/unselected circle prompts, the source must include all of these:
+
+- an array or computed memory state for selection, such as `selected`;
+- a per-circle branch based on that state;
+- `ISTROKE BLACK` on the selected branch before `CIRCLE`;
+- `ISTROKE GREY` on the unselected branch before `CIRCLE`;
+- `IFILL WHITE` or `NO_FILL` before drawing white circles;
+- no later all-circles pass that redraws every circle with the same black
+  stroke.
+
+For rank labels inside circles, the source must include all of these:
+
+- `ITEXT_SIZE 1` for small labels, especially when circle radius is 40 pixels or
+  less;
+- `ITEXT_ALIGN CENTER, CENTER` before rank-label `TEXT` calls;
+- label positions taken from the circle center coordinates, not from manual
+  constants such as `centerX - 3` or `centerY + 4`;
+- `IFILL BLACK` or another legible text fill set after white circle fill and
+  before `TEXT`.
+
+If any of these checks fails, do not send the image. Modify the assembly and
+call `render_and_save_sketch` again.
 
 ## Telegram Output Rules
 

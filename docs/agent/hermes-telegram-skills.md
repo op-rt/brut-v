@@ -61,6 +61,20 @@ For label prompts, use `ITEXT_SIZE 1` for small text and center labels by
 setting `ITEXT_ALIGN CENTER, CENTER` before `TEXT`. Do not use large text scales
 or fixed offsets for one- and two-digit rank labels.
 
+Before sending the final `MEDIA:` response, inspect the generated source for the
+requested visual constraints. For selected/unselected circles, require a branch
+from the `selected` state with `ISTROKE BLACK` for selected circles and
+`ISTROKE GREY` for unselected circles before each `CIRCLE`. For white circles,
+set `IFILL WHITE` or `NO_FILL` before the circle pass, then switch to
+`IFILL BLACK` only for rank labels or other filled black marks. Reject and
+rerender sketches that redraw all circles with the same final stroke.
+
+For labels inside circles, require `ITEXT_SIZE 1`,
+`ITEXT_ALIGN CENTER, CENTER`, and `TEXT` at the actual center coordinates. Do
+not accept hand-offset text positions such as `centerX - 3`; the alignment
+macro exists so one- and two-digit labels are centered as whole strings. If a
+brief says "number them 112" while selecting 12 items, treat it as `1-12`.
+
 On success, the final response should contain exactly one line:
 
 ```text

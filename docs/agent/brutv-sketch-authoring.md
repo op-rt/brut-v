@@ -217,6 +217,7 @@ For selected/unselected styling, branch per element and set stroke inside the
 branch:
 
 ```asm
+IFILL WHITE
 lw   t0, 0(s_selected)
 beq  t0, x0, unselected_circle
 ISTROKE BLACK
@@ -228,6 +229,13 @@ ISTROKE_WEIGHT 1
 draw_circle:
 CIRCLE s_x, s_y, s_radius
 ```
+
+Do not draw all circles in one black pass after the branch, and do not use black
+fill when the brief asks for white circles with black or grey outlines. After
+the circle pass, switch to `IFILL BLACK` for text labels. Rank labels should use
+the circle center coordinates directly; avoid manual offsets such as
+`centerX - 3`, because `ITEXT_ALIGN CENTER, CENTER` already centers the whole
+string.
 
 ## Shape Construction
 
