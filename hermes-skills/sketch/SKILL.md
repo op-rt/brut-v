@@ -36,22 +36,26 @@ BRUT-V, MCP, session ids, run ids, or media delivery.
 6. If the brief does not request motion, prefer a static sketch and `frames: 1`.
 7. If the brief asks for animation, use `ANIMATE draw` correctly and render 18
    to 24 frames.
-8. Call `render_and_save_sketch` with:
+8. For prompts with geometry, tangent, radius, draw-order, label, or
+   selected/unselected style constraints, call `audit_sketch_constraints` with
+   the generated source and original prompt. If it returns high-severity
+   findings, repair the sketch before rendering.
+9. Call `render_and_save_sketch` with:
    - `includeImageContent: false`
    - `includePngBase64: false`
    - the generated `sessionId`
    - the original brief in `prompt`
-9. If validation or rendering fails, correct the sketch once and render again.
-10. Before accepting a rendered image, perform the source-level acceptance
+10. If validation or rendering fails, correct the sketch once and render again.
+11. Before accepting a rendered image, perform the source-level acceptance
     checks below. If a check fails, repair the sketch and render again.
-11. Build the absolute PNG path:
+12. Build the absolute PNG path:
 
 ```text
 /root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
 ```
 
-12. Verify that the PNG exists.
-13. If the render is OK, reply with exactly one media line and no other text:
+13. Verify that the PNG exists.
+14. If the render is OK, reply with exactly one media line and no other text:
 
 ```text
 MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
@@ -134,6 +138,16 @@ For tangent/arc outlines around selected circles:
   50, not 40, 45, `r - strokeWeight`, or an "inner" visual radius;
 - store one canonical radius value and reuse it for both `CIRCLE` and tangent
   construction, or document any separate variable as exactly equal to it;
+- include a source comment proving the invariant, for example:
+  `# RADIUS_INVARIANT: DRAWN_CIRCLE_R == TANGENT_ARC_R == 50`;
+- every computed tangent point must lie on the displayed circle boundary:
+  `(px - cx)^2 + (py - cy)^2 == R^2` in the sketch's integer/fixed-point
+  approximation. If the source cannot satisfy this, do not fake it by shrinking
+  `R`;
+- for equal-radius same-winding outer tangents, a valid construction is to take
+  the normalized perpendicular of the center-to-center vector and offset both
+  centers by `side * R` along that perpendicular. The two tangent endpoints are
+  those offset points, not points on a smaller concentric circle;
 - same-winding neighbors use outer tangents and opposite-winding neighbors use
   inner/crossing tangents when the prompt asks for that distinction;
 - arcs must be built on the displayed circle boundary, not on a helper circle
@@ -171,6 +185,11 @@ For selected/unselected circle prompts, the source must include all of these:
 For tangent/arc prompts with an explicit radius, the source must include all of
 these:
 
+- a comment exactly stating the radius invariant, such as
+  `# RADIUS_INVARIANT: DRAWN_CIRCLE_R == TANGENT_ARC_R == 50`;
+- comments or procedure names showing the boundary invariant, such as
+  `tangent_points_on_circle_boundary` or
+  `# tangent point distance squared from center == R*R`;
 - one canonical radius matching the prompt, such as `li s_radius, 50` or
   `radius: .word 50`, used by both `CIRCLE` and tangent/arc construction;
 - no tangent radius smaller than the drawn circle radius unless the user asked

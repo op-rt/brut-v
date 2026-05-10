@@ -41,8 +41,10 @@ Use `/sketch` for image-first creation. The user should be able to write:
 ```
 
 The agent should use `get_atelier_context`, generate a BRUT-V sketch, then call
-`render_and_save_sketch` with `includeImageContent: false` and
-`includePngBase64: false`.
+`audit_sketch_constraints` for briefs with geometry, tangent, radius,
+draw-order, label, or selected/unselected styling constraints. Repair
+high-severity findings before calling `render_and_save_sketch` with
+`includeImageContent: false` and `includePngBase64: false`.
 
 If the brief asks for an algorithm, the algorithm belongs in the sketch. Do not
 use Python or another external tool to choose random elements, sort them, rank
@@ -80,7 +82,11 @@ says `r=50`, "same r", or "no shrinking", the tangent and arc construction must
 use the same radius as the displayed `CIRCLE`; do not silently use an inset
 helper radius to avoid intersections. Reject sources that contain a smaller
 tangent radius, `r - stroke`, `inner radius`, or similar shrinkage unless the
-user explicitly asked for inset geometry.
+user explicitly asked for inset geometry. Include a source comment such as
+`# RADIUS_INVARIANT: DRAWN_CIRCLE_R == TANGENT_ARC_R == 50` so the MCP audit can
+verify the invariant before rendering. Also state and implement the boundary
+condition: each tangent point must satisfy `(px-cx)^2 + (py-cy)^2 == R^2`
+within the sketch's integer or fixed-point approximation.
 
 For layering prompts, remember that BRUT-V draws immediately: later drawing is
 visually on top. If the user asks for the final black filled polygon on top of

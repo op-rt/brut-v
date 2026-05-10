@@ -248,7 +248,11 @@ visible circles unless the user explicitly requests inset geometry. A prompt
 such as `r=50`, `same r=50`, or `no shrinking` means the tangent points and arc
 points live on the displayed `CIRCLE` boundary. Do not use a smaller helper
 radius like 45 or `r - strokeWeight`; it will make tangents visually collide
-with the drawn circles.
+with the drawn circles. For auditable generated sketches, add a comment like
+`# RADIUS_INVARIANT: DRAWN_CIRCLE_R == TANGENT_ARC_R == 50` and use the same
+constant or register for the visible `CIRCLE` radius and tangent/arc math. Each
+tangent point should satisfy `(px-cx)^2 + (py-cy)^2 == R^2` in the sketch's
+integer or fixed-point approximation.
 
 ## Shape Construction
 

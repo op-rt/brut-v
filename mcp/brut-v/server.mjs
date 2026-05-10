@@ -579,6 +579,175 @@ function validateSource(source, mainName = "sketch.asm", autoIncludeCore = true)
     };
 }
 
+function auditSketchConstraints(sourceInput, promptInput = "") {
+    const source = String(sourceInput ?? "");
+    const prompt = String(promptInput ?? "");
+    const lines = source.split(/\r?\n/);
+    const promptRadius = extractPromptRadius(prompt);
+    const tangentRequested = /\b(tangents?|tangentes?|arcs?|arc)\b/i.test(prompt);
+    const sameRadiusRequested = tangentRequested && (
+        promptRadius != null ||
+        /\b(no\s*shrinking|no\s*shrink|same\s*r|same\s*radius|same\s*rayon|meme\s*rayon|même\s*rayon|drawn\s+circles?|original\s+circles?|cercles?\s+originaux)\b/i.test(prompt)
+    );
+    const overlayRequested = /\b(on\s+top|above|overlay|dessus|au-dessus|par\s+dessus)\b/i.test(prompt)
+        && /\b(fill|filled|polygon|polygone|rempli|remplie|shape|forme)\b/i.test(prompt);
+    const findings = [];
+
+    const addFinding = (severity, code, message, evidence = []) => {
+        findings.push({ severity, code, message, evidence });
+    };
+
+    if (sameRadiusRequested) {
+        const radiusText = promptRadius == null ? "the displayed circle radius" : String(promptRadius);
+        if (!hasSameRadiusInvariant(source, promptRadius)) {
+            addFinding(
+                "high",
+                "missing-same-radius-invariant",
+                `Tangent/arc geometry must prove it uses the same radius as the displayed circles (${radiusText}). Add a single canonical radius and a RADIUS_INVARIANT comment, then use that radius for CIRCLE, tangent points, and arcs.`,
+            );
+        }
+        if (!hasBoundaryInvariant(source)) {
+            addFinding(
+                "high",
+                "missing-tangent-boundary-invariant",
+                "Tangent points must be constructed on the displayed circle boundary. Add a clear boundary invariant such as distance squared from center equals R*R, and implement tangent endpoints from that radius instead of an inset helper circle.",
+            );
+        }
+
+        for (const issue of findShrinkageEvidence(lines, promptRadius)) {
+            addFinding(
+                "high",
+                "tangent-radius-shrunk",
+                "Source suggests tangent/arc geometry is using a smaller helper radius even though the prompt requested tangents on the drawn circles.",
+                [issue],
+            );
+        }
+    }
+
+    if (overlayRequested) {
+        const order = inspectDrawOrder(source);
+        if (order.circleLine != null && order.overlayLine != null && order.overlayLine < order.circleLine) {
+            addFinding(
+                "high",
+                "overlay-drawn-before-circles",
+                "The final filled overlay appears before the circle pass. In BRUT-V, later drawing appears on top, so draw circles first and the filled polygon/tangent shape last.",
+                [
+                    { line: order.overlayLine, text: lines[order.overlayLine - 1] ?? "" },
+                    { line: order.circleLine, text: lines[order.circleLine - 1] ?? "" },
+                ],
+            );
+        }
+        if (order.circleLine == null || order.overlayLine == null) {
+            addFinding(
+                "medium",
+                "draw-order-not-auditable",
+                "Could not clearly audit draw order. Use named calls such as call draw_circles followed by call draw_tangent_fill, or draw CIRCLE before the final filled polygon in setup.",
+            );
+        }
+    }
+
+    return {
+        ok: !findings.some(finding => finding.severity === "high"),
+        promptRadius,
+        checks: {
+            tangentRequested,
+            sameRadiusRequested,
+            overlayRequested,
+        },
+        findings,
+    };
+}
+
+function extractPromptRadius(prompt) {
+    const patterns = [
+        /\b(?:r|R)\s*=\s*(\d+)\b/,
+        /\bradius\s*(?:=|:)?\s*(\d+)\b/i,
+        /\brayon\s*(?:=|:)?\s*(\d+)\b/i,
+    ];
+    for (const pattern of patterns) {
+        const match = prompt.match(pattern);
+        if (!match) continue;
+        const value = Number.parseInt(match[1], 10);
+        if (Number.isFinite(value) && value > 0) return value;
+    }
+    return null;
+}
+
+function hasSameRadiusInvariant(source, radius) {
+    const radiusPattern = radius == null ? "\\d+" : String(radius);
+    const invariant = new RegExp(`RADIUS_INVARIANT[^\\n]*(?:CIRCLE|DRAWN)[^\\n]*(?:TANGENT|ARC)[^\\n]*${radiusPattern}|RADIUS_INVARIANT[^\\n]*${radiusPattern}[^\\n]*(?:CIRCLE|DRAWN)[^\\n]*(?:TANGENT|ARC)`, "i");
+    if (invariant.test(source)) return true;
+
+    if (radius == null) return false;
+
+    const sharedNames = ["R", "RADIUS", "CIRCLE_RADIUS", "DRAWN_RADIUS"];
+    for (const name of sharedNames) {
+        const eqv = new RegExp(`\\.eqv\\s+${name}\\s+${radius}\\b`, "i");
+        const word = new RegExp(`${name}:\\s*\\.word\\s+${radius}\\b`, "i");
+        const circleUse = new RegExp(`\\b(?:I?CIRCLE)\\b[^\\n]*\\b${name}\\b`, "i");
+        const tangentUse = new RegExp(`\\b(?:tangent|arc|tan|outline)\\b[\\s\\S]*\\b${name}\\b|\\b${name}\\b[\\s\\S]*\\b(?:tangent|arc|tan|outline)\\b`, "i");
+        if ((eqv.test(source) || word.test(source)) && circleUse.test(source) && tangentUse.test(source))
+            return true;
+    }
+
+    return false;
+}
+
+function hasBoundaryInvariant(source) {
+    return /\b(?:BOUNDARY_INVARIANT|tangent_points?_on_circle_boundary|distance\s+squared\s+from\s+center\s*==\s*R\s*\*\s*R|\(px\s*-\s*cx\)\^2\s*\+\s*\(py\s*-\s*cy\)\^2\s*==\s*R\^2)\b/i.test(source);
+}
+
+function findShrinkageEvidence(lines, radius) {
+    const issues = [];
+    const shrinkPattern = /\b(?:shrink|shrunk|inset|inner\s+radius|helper\s+radius|avoid\s+collision|smaller\s+circle|r\s*-\s*(?:stroke|\d+)|radius\s*-\s*(?:stroke|\d+))\b/i;
+    const negativeOffsetPattern = /\baddi\s+\w+\s*,\s*\w+\s*,\s*-\d+\b/i;
+    const contextPattern = /\b(?:tangent|tan|arc|outline|radius|helper|inset|shrink)\b/i;
+
+    for (let i = 0; i < lines.length; i++) {
+        const text = lines[i];
+        const context = lines.slice(Math.max(0, i - 3), Math.min(lines.length, i + 4)).join("\n");
+        if (shrinkPattern.test(text) || (negativeOffsetPattern.test(text) && contextPattern.test(context))) {
+            issues.push({ line: i + 1, text });
+            continue;
+        }
+
+        if (radius != null && contextPattern.test(context)) {
+            const numbers = [...text.matchAll(/\b\d+\b/g)].map(match => Number.parseInt(match[0], 10));
+            const suspicious = numbers.find(value => value > Math.max(0, radius - 20) && value < radius);
+            if (suspicious != null)
+                issues.push({ line: i + 1, text });
+        }
+    }
+
+    return issues.slice(0, 20);
+}
+
+function inspectDrawOrder(source) {
+    const lines = source.split(/\r?\n/);
+    const setup = extractSetupBody(lines);
+    const searchLines = setup.length ? setup : lines.map((text, index) => ({ text, line: index + 1 }));
+    const circle = searchLines.find(entry => /\bcall\s+draw_(?:grid_)?circles?\b|\bI?CIRCLE\b/i.test(entry.text));
+    const overlay = searchLines.find(entry =>
+        /\bcall\s+draw_(?:tangent|final|overlay|filled|black|shape|polygon)\w*\b|\bIFILL\s+BLACK\b|\bBEGINSHAPE\b|\bPOLYGON\b/i.test(entry.text)
+    );
+    return {
+        circleLine: circle?.line ?? null,
+        overlayLine: overlay?.line ?? null,
+    };
+}
+
+function extractSetupBody(lines) {
+    const start = lines.findIndex(line => /^\s*setup:\s*(?:#.*)?$/.test(line));
+    if (start < 0) return [];
+
+    const body = [];
+    for (let i = start + 1; i < lines.length; i++) {
+        body.push({ text: lines[i], line: i + 1 });
+        if (/^\s*ret\s*(?:#.*)?$/.test(lines[i])) break;
+    }
+    return body;
+}
+
 function searchText(text, query, maxMatches = 20) {
     const q = query.toLowerCase();
     const lines = text.split(/\r?\n/);
@@ -759,6 +928,20 @@ server.registerTool(
     },
     async ({ source, mainName = "sketch.asm", autoIncludeCore = true }) =>
         jsonResult(validateSource(source, mainName, autoIncludeCore)),
+);
+
+server.registerTool(
+    "audit_sketch_constraints",
+    {
+        title: "Audit BRUT-V Sketch Constraints",
+        description: "Heuristically audit generated sketch source against the original prompt for geometry, draw-order, and visual constraints before rendering.",
+        inputSchema: {
+            source: z.string().describe("BRUT-V assembly source to audit."),
+            prompt: z.string().optional().describe("Original creative request or drawing brief."),
+        },
+    },
+    async ({ source, prompt = "" }) =>
+        jsonResult(auditSketchConstraints(source, prompt)),
 );
 
 server.registerTool(
@@ -1203,6 +1386,7 @@ server.registerTool(
                 selected,
                 nextActions: [
                     "Generate a BRUT-V sketch if no selected run exists.",
+                    "Call audit_sketch_constraints on generated source and request before rendering when the brief contains geometry, draw-order, tangent, radius, label, or style constraints.",
                     "Use render_and_save_sketch for each rendered candidate.",
                     "Use selected.metadata.runId as parentRunId when iterating.",
                     "Critique the render against the request and styleMemory before changing code.",

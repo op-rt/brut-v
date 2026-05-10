@@ -195,7 +195,11 @@ a final black filled polygon on top of the circles, draw the circles first and
 draw the filled polygon after them. For tangent and arc geometry around circles,
 reuse the visible circle radius exactly unless the user asks for inset geometry;
 `r=50` with "no shrinking" means tangent and arc points use radius 50, not a
-smaller helper radius.
+smaller helper radius. Add an auditable comment such as
+`# RADIUS_INVARIANT: DRAWN_CIRCLE_R == TANGENT_ARC_R == 50` and use the same
+constant or register for the visible circle and tangent/arc construction. Each
+tangent point must be on that boundary, so its squared distance from the center
+is `R*R` in the sketch's integer or fixed-point approximation.
 
 ## Shape Construction
 

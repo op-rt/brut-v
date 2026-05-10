@@ -49,6 +49,9 @@ If no run is specified, audit the latest saved atelier run.
      large `ITEXT_SIZE` or fixed manual offsets instead of `TEXT_ALIGN`;
    - tangent or arc geometry that uses a smaller helper radius than the
      displayed circles when the prompt requested tangents on the drawn circles;
+   - tangent endpoints that are not proven to lie on the displayed circle
+     boundary with `(px-cx)^2 + (py-cy)^2 == R^2` or an equivalent fixed-point
+     approximation;
    - draw-order bugs, such as a final filled polygon drawn before the circles
      even though the prompt requested it on top;
    - excessive unrolled drawing code where loops and procedures would better
