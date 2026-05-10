@@ -103,8 +103,6 @@ Use `PUSH_MATRIX` / `POP_MATRIX` to isolate transforms.
 - `TEXT str, x, y`
 - `TEXT_ALIGN h, v`
 - `ITEXT_ALIGN h, v`
-- `TEXT_CENTER str, cx, cy`
-- `ITEXT_CENTER str, cx, cy`
 - `TEXT_SIZE size`, `ITEXT_SIZE size`
 - `TEXT_WIDTH dest, str`
 - `TEXT_HEIGHT dest, str`
