@@ -15,8 +15,10 @@ It exposes:
 - A tool to retrieve atelier session context for Hermes creative iteration.
 - Prompts for sketch creation, debugging, macro explanation, and Processing-to-BRUT-V translation.
 - Prompts for the living atelier, creative loop, style memory, and professor-mode workflows.
+- Portable Hermes slash skills for `/sketch`, `/source`, `/explain`, `/audit`,
+  and `/professor` live in `hermes-skills/`.
 
-This version has constrained writes only inside `web-static/mcp/brut-v/atelier-runs/`.
+This version has constrained writes only inside `mcp/brut-v/atelier-runs/`.
 It can validate, render, and save draft runs, but it does not edit source
 sketches, regenerate generated files, or publish sketches.
 
@@ -55,6 +57,15 @@ package's `server.mjs`:
 Use the same server from a Telegram-connected Hermes agent. The bot should call
 the same MCP tools as the local Hermes agent rather than reimplementing BRUT-V
 logic.
+
+For Telegram image delivery, prefer one final absolute media directive:
+
+```text
+MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
+```
+
+When emitting that directive, call `render_and_save_sketch` with
+`includeImageContent: false` to avoid duplicate image attachments.
 
 For a remote Hermes agent, expose this server only through an explicit bridge or
 deployment configuration. Do not grant unrestricted filesystem access to the

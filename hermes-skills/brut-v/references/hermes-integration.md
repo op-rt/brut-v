@@ -43,6 +43,23 @@ available for later curation. Use `save_agent_sketch` for non-rendered drafts,
 `list_agent_runs` to review session history, and `get_agent_run` to retrieve a
 saved sketch or PNG.
 
+## Telegram Slash Skills
+
+Portable Hermes installs should expose these dynamic skills:
+
+- `/sketch`: generate and render from a short drawing brief. On successful
+  Telegram requests, return only one `MEDIA:` line pointing at the absolute
+  `render.png` path.
+- `/source`: retrieve the saved `sketch.asm` for the latest or selected run.
+- `/explain`: explain a saved or pasted sketch line by line.
+- `/audit`: review validation, runtime, macro, register, visual, and RARS risks.
+- `/professor`: answer focused teaching questions about BRUT-V code.
+
+The normal `/sketch` response should not show `Done`, `sessionId`, `runId`,
+paths, or diagnostics. Use details mode only when the user asks for it, or when
+the render fails. To avoid double image delivery, call `render_and_save_sketch`
+with `includeImageContent: false` before emitting the final `MEDIA:` line.
+
 ## Style Memory
 
 Use Hermes memory for private user taste and interaction history:

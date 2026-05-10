@@ -15,6 +15,8 @@ Use this file as the first orientation layer. Load the more specific files in `d
 - `docs/`: user-facing documentation shown by the static site.
 - `build/`: generation scripts for embedded core and sketch file systems.
 - `hermes-skills/brut-v/`: portable Hermes skill for BRUT-V sketch generation, debugging, and runtime work.
+- `hermes-skills/sketch/`: short `/sketch` Telegram command for image-only BRUT-V renders.
+- `hermes-skills/source/`, `explain/`, `audit/`, `professor/`: professor-mode commands for retrieving, explaining, reviewing, and discussing saved sketches.
 - `mcp/brut-v/`: local stdio MCP server exposing BRUT-V docs, sketches, validation tools, and prompts.
 - `mcp/brut-v/atelier-runs/`: ignored local run store for agent-generated sketches, PNG renders, and metadata.
   The MCP server writes only to this controlled directory for atelier drafts.
@@ -34,6 +36,7 @@ The source-of-truth assembly framework lives one directory above this repo:
 - `docs/agent/brutv-examples.md`: canonical sketch patterns to copy from.
 - `docs/agent/hermes-integration.md`: Hermes integration surface, security model, and product direction.
 - `docs/agent/hermes-creative-loop.md`: generate, render, critique, iterate workflow for Hermes and Telegram.
+- `docs/agent/hermes-telegram-skills.md`: portable Telegram slash skills for the living atelier and professor mode.
 - `hermes-skills/brut-v/SKILL.md`: installable Hermes skill entry point.
 - `mcp/brut-v/server.mjs`: MCP server entry point for clients that support Model Context Protocol.
 
@@ -63,6 +66,11 @@ The second major goal is professor mode. Hermes should help the user build
 RISC-V skill by explaining sketches line by line, tracing register usage,
 surfacing likely bugs, and connecting low-level instructions to the visual
 output.
+
+The current Telegram command surface is `/sketch`, `/source`, `/explain`,
+`/audit`, and `/professor`. Exact instruction tracing remains future MCP work;
+until then, professor commands should label register traces as conceptual
+walkthroughs.
 
 Recent Hermes capabilities such as durable multi-agent Kanban, subagent
 delegation, memory, skills, MCP, automations, messaging, and voice should be

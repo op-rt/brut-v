@@ -87,7 +87,7 @@ Save failed attempts only when they are useful for diagnosis. Tag them
 
 ## Telegram Mode
 
-Telegram replies should be compact:
+Regular Telegram atelier replies should be compact:
 
 - send or attach the PNG when available;
 - include `sessionId` and `runId`;
@@ -96,6 +96,19 @@ Telegram replies should be compact:
   `sauver`, or `plus minimal`.
 
 Do not paste full source in Telegram unless the user asks.
+
+For the short `/sketch` skill, use image-only delivery on success. The final
+assistant response should contain exactly one media directive and no other
+visible text:
+
+```text
+MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
+```
+
+When using this `MEDIA:` path, call `render_and_save_sketch` with
+`includeImageContent: false` and `includePngBase64: false` so the gateway does
+not deliver both the MCP image content and the local PNG file. Show metadata
+only for details mode or failures.
 
 ## Style Memory
 

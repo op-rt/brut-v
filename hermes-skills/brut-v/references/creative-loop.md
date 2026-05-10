@@ -16,7 +16,7 @@ visual work.
 
 ## Telegram Reply Shape
 
-Keep replies short:
+Keep regular atelier replies short:
 
 - rendered image;
 - `sessionId` and `runId`;
@@ -24,6 +24,21 @@ Keep replies short:
 - next commands such as `iterer`, `expliquer`, `variante`, `sauver`.
 
 Do not paste full source unless requested.
+
+For the short `/sketch` command, use image-only delivery on success:
+
+```text
+MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
+```
+
+Rules for Telegram media delivery:
+
+- use the absolute PNG path, never the relative MCP path;
+- call `render_and_save_sketch` with `includeImageContent: false` when using a
+  final `MEDIA:` line, otherwise Telegram may receive duplicate images;
+- include exactly one `MEDIA:` line for a successful normal `/sketch`;
+- omit visible `sessionId`, `runId`, paths, and diagnostics unless the user asks
+  for details or the render fails.
 
 ## Style Memory
 

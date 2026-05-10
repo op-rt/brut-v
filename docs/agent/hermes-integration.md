@@ -26,6 +26,12 @@ interaction surface, from the user's Hermes Telegram bot.
 - `docs/agent/hermes-creative-loop.md`: operational generate, render, critique,
   iterate loop for Hermes and Telegram.
 - `hermes-skills/brut-v/`: portable Hermes skill with compact references.
+- `hermes-skills/sketch/`: short `/sketch` command that renders an image from a
+  drawing brief and sends it through Telegram with a single `MEDIA:` line.
+- `hermes-skills/source/`: `/source` command to retrieve saved sketch assembly.
+- `hermes-skills/explain/`: `/explain` command for line-by-line professor mode.
+- `hermes-skills/audit/`: `/audit` command for review and RARS/runtime risks.
+- `hermes-skills/professor/`: `/professor` command for focused teaching Q&A.
 - `mcp/brut-v/`: local stdio MCP server exposing docs, sketches, validation,
   rendering, controlled atelier run storage, and workflow prompts.
 - `mcp/brut-v/atelier-runs/`: ignored local run store for agent-generated sketches, PNG
@@ -85,6 +91,30 @@ only the MCP server and future approved runtime endpoints.
 - `continue-brutv-iteration`: guide Hermes through a parent-run iteration.
 - `extract-brutv-style-memory`: derive durable memory candidates from feedback.
 - `teach-brutv-sketch`: structure a professor-mode explanation.
+
+## Telegram Command Surface
+
+The intended short command surface is:
+
+```text
+/sketch <drawing brief>
+/sketch --details <drawing brief>
+/source [last|sessionId [runId]]
+/explain [last|sessionId [runId]] [question]
+/audit [last|sessionId [runId]]
+/professor [last|sessionId [runId]] <question>
+```
+
+`/sketch` should be terse. On success, the Telegram-visible reply should be the
+native image attachment only, implemented with one final absolute `MEDIA:` path:
+
+```text
+MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
+```
+
+Use `render_and_save_sketch(includeImageContent: false)` when sending through
+`MEDIA:` to prevent duplicate attachments. Show `sessionId`, `runId`, paths, or
+diagnostics only in details mode or failure mode.
 
 ## Security Model
 
