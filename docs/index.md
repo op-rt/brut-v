@@ -151,8 +151,8 @@ Important detail:
 - text does not use `stroke`
 
 The built-in font is an 8x8 bitmap font, scaled by `TEXT_SIZE` or
-`ITEXT_SIZE`. Use `TEXT_CENTER` or `ITEXT_CENTER` when a label should be
-centered on a point.
+`ITEXT_SIZE`. Use `TEXT_ALIGN` or `ITEXT_ALIGN` to set the anchor used by
+`TEXT`; for centered labels, use `ITEXT_ALIGN CENTER, CENTER`.
 
 ## Animation
 

@@ -182,7 +182,8 @@ If the exact algorithm is too large for a sketch, implement and name a bounded
 approximation. Do not silently replace runtime logic with precomputed data.
 
 Use named procedures for complex sketches instead of one long unrolled `setup`.
-For centered rank labels inside circles, use `ITEXT_SIZE 1` and `TEXT_CENTER`.
+For centered rank labels inside circles, use `ITEXT_SIZE 1`,
+`ITEXT_ALIGN CENTER, CENTER`, and `TEXT`.
 For selected/unselected styling, branch per element and set `ISTROKE BLACK` or
 `ISTROKE GREY` inside that branch before drawing the circle.
 

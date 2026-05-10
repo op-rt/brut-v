@@ -57,9 +57,9 @@ good default for 12 selected grid points is: nearest-neighbor initial route,
 then a bounded 2-opt style swap pass over the `order` array using squared center
 distances.
 
-For label prompts, use `ITEXT_SIZE 1` for small text and center labels with
-`TEXT_CENTER` or `ITEXT_CENTER`. Do not use large text scales or fixed offsets
-for one- and two-digit rank labels.
+For label prompts, use `ITEXT_SIZE 1` for small text and center labels by
+setting `ITEXT_ALIGN CENTER, CENTER` before `TEXT`. Do not use large text scales
+or fixed offsets for one- and two-digit rank labels.
 
 On success, the final response should contain exactly one line:
 

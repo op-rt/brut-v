@@ -204,12 +204,13 @@ setup:
     ret
 ```
 
-For centered labels, set a small text size and use `TEXT_CENTER`:
+For centered labels, set a small text size and a centered text alignment:
 
 ```asm
 ITEXT_SIZE 1
+ITEXT_ALIGN CENTER, CENTER
 la s0, rank10
-TEXT_CENTER s0, s1, s2
+TEXT s0, s1, s2
 ```
 
 For selected/unselected styling, branch per element and set stroke inside the

@@ -56,6 +56,16 @@ IROTATE HALF_PI
 IARC 256, 256, 200, 200, 0x00000000, PI, 1
 ```
 
+### Alignment Constants
+
+- `CENTER` = `0`
+- `RIGHT` = `1`
+- `BOTTOM` = `2`
+- `LEFT` = `3`
+- `TOP` = `4`
+
+Use them with `TEXT_ALIGN`/`ITEXT_ALIGN`.
+
 ## Setting
 
 ### `ISIZE w, h`
@@ -516,21 +526,47 @@ Immediate version of `TEXT_SIZE`.
 ITEXT_SIZE 4
 ```
 
+### `TEXT_ALIGN h, v`
+
+Sets Processing-style text alignment from registers. `TEXT` then interprets its
+`x, y` arguments as an anchor point using the current alignment.
+
+- Parameters: `reg, reg`
+- Horizontal values: `LEFT`, `CENTER`, `RIGHT`
+- Vertical values: `TOP`, `CENTER`, `BOTTOM`
+- Default: `LEFT, TOP`
+
+```asm
+li s0, CENTER
+li s1, CENTER
+TEXT_ALIGN s0, s1
+```
+
+### `ITEXT_ALIGN h, v`
+
+Immediate version of `TEXT_ALIGN`.
+
+```asm
+ITEXT_ALIGN CENTER, CENTER
+ITEXT_ALIGN 0, 0
+```
+
 ### `TEXT str, x, y`
 
 Draws a string.
 
 - Parameters: `ptr, reg, reg`
-- Notes: text uses the current fill color
+- Notes: text uses the current fill color and current text alignment
 
 ```asm
 la   s0, msg
+ITEXT_ALIGN CENTER, CENTER
 TEXT s0, s1, s2
 ```
 
 ### `TEXT_CENTER str, cx, cy`
 
-Draws a string centered around a register-based point.
+Shortcut that draws a string centered around a register-based point.
 
 - Parameters: `ptr, reg, reg`
 - Notes: text uses the current fill color and current text size
@@ -544,7 +580,7 @@ TEXT_CENTER s0, s1, s2
 
 ### `ITEXT_CENTER str, cx, cy`
 
-Immediate center-point version of `TEXT_CENTER`.
+Immediate center-point shortcut version of `TEXT_CENTER`.
 
 ```asm
 la s0, msg

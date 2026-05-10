@@ -121,7 +121,7 @@ For labels inside circles:
 
 - "small characters" means `ITEXT_SIZE 1` unless the user explicitly asks for
   larger text;
-- use `TEXT_CENTER` or `ITEXT_CENTER` to center labels in the circle;
+- use `ITEXT_ALIGN CENTER, CENTER` before `TEXT` to center labels in the circle;
 - for two-digit labels, measure and center the whole string, do not place digits
   manually;
 - draw labels after circles and choose a fill color that remains legible.

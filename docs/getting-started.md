@@ -390,7 +390,7 @@ The `.data` section stores values that the program can read later. Here, `msg:` 
 
 `la s0, msg` loads the address of the string into `s0`, so `TEXT` can read the characters from memory.
 
-To center text, use `TEXT_CENTER`:
+To center text, set text alignment before drawing:
 
 ```asm
 .data
@@ -402,9 +402,12 @@ setup:
     IBACKGROUND WHITE
     IFILL BLACK
     ITEXT_SIZE 5
+    ITEXT_ALIGN CENTER, CENTER
 
     la   s0, msg
-    ITEXT_CENTER s0, 256, 256
+    li   s1, 256
+    li   s2, 256
+    TEXT s0, s1, s2
     ret
 ```
 

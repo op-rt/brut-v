@@ -78,7 +78,7 @@ Do not precompute creative algorithm results with Python or other external
 tools and then hardcode them into `.data`.
 
 For ranked or labeled geometry, use small text (`ITEXT_SIZE 1` by default) and
-`TEXT_CENTER`/`ITEXT_CENTER` rather than manual offsets.
+`ITEXT_ALIGN CENTER, CENTER` rather than manual offsets.
 
 Recent Hermes capabilities such as durable multi-agent Kanban, subagent
 delegation, memory, skills, MCP, automations, messaging, and voice should be

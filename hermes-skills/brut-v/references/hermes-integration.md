@@ -68,8 +68,8 @@ inspection, but not the creative algorithm requested by the user.
 
 For complex `/sketch` prompts, prioritize readable assembly structure: named
 procedures, bounded loops, arrays for state, and helper macros such as
-`TEXT_CENTER`. A visually acceptable render is not sufficient when the source
-ignores requested algorithmic behavior or style constraints.
+`ITEXT_ALIGN CENTER, CENTER`. A visually acceptable render is not sufficient
+when the source ignores requested algorithmic behavior or style constraints.
 
 ## Style Memory
 
