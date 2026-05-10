@@ -66,6 +66,11 @@ precomputation to choose random elements, sort, rank, pathfind, or simulate.
 External tools may support operations such as install, test, and file
 inspection, but not the creative algorithm requested by the user.
 
+For complex `/sketch` prompts, prioritize readable assembly structure: named
+procedures, bounded loops, arrays for state, and helper macros such as
+`TEXT_CENTER`. A visually acceptable render is not sufficient when the source
+ignores requested algorithmic behavior or style constraints.
+
 ## Style Memory
 
 Use Hermes memory for private user taste and interaction history:

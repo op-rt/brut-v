@@ -101,6 +101,8 @@ Use `PUSH_MATRIX` / `POP_MATRIX` to isolate transforms.
 ## Text
 
 - `TEXT str, x, y`
+- `TEXT_CENTER str, cx, cy`
+- `ITEXT_CENTER str, cx, cy`
 - `TEXT_SIZE size`, `ITEXT_SIZE size`
 - `TEXT_WIDTH dest, str`
 - `TEXT_HEIGHT dest, str`
@@ -115,7 +117,7 @@ msg: .asciz "Hello"
 .text
 setup:
     la s0, msg
-    TEXT s0, s1, s2
+    ITEXT_CENTER s0, 256, 256
     ret
 ```
 

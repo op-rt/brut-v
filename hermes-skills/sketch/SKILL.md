@@ -84,6 +84,48 @@ If a complex algorithm is too large, implement a clear bounded approximation in
 assembly and name it in details mode. For example, use a nearest-neighbor path
 heuristic rather than claiming an exact traveling-salesman optimum.
 
+## Complex Brief Quality Bar
+
+For grid-selection/path/ranking prompts, generate structured assembly, not a
+long unrolled drawing script.
+
+Prefer named procedures such as:
+
+- `init_grid`
+- `select_unique_random`
+- `build_initial_path`
+- `improve_path_2opt`
+- `draw_path`
+- `draw_circles`
+- `draw_ranks`
+
+Use arrays for `xs`, `ys`, `selected`, `visited`, `order`, and `ranks`. Keep
+loops bounded with literal counts such as 16 points, 12 selected points, and a
+small fixed number of 2-opt passes.
+
+When the user asks for "shortest path" over more than a few points, do not claim
+an exact optimum unless the sketch actually searches the full solution space.
+Use a nearest-neighbor initial path plus bounded 2-opt style swaps, and describe
+it as a 2-opt heuristic in details mode.
+
+Respect visual constraints exactly:
+
+- selected circles with black stroke;
+- unselected circles with grey stroke;
+- white circle fill when requested;
+- set stroke color and stroke weight inside the selected/unselected branch;
+- draw unselected and selected states from the `selected` array, never from a
+  hardcoded visual pass.
+
+For labels inside circles:
+
+- "small characters" means `ITEXT_SIZE 1` unless the user explicitly asks for
+  larger text;
+- use `TEXT_CENTER` or `ITEXT_CENTER` to center labels in the circle;
+- for two-digit labels, measure and center the whole string, do not place digits
+  manually;
+- draw labels after circles and choose a fill color that remains legible.
+
 ## Telegram Output Rules
 
 For a successful normal `/sketch` request, the final visible Telegram result

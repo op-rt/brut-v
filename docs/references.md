@@ -528,6 +528,29 @@ la   s0, msg
 TEXT s0, s1, s2
 ```
 
+### `TEXT_CENTER str, cx, cy`
+
+Draws a string centered around a register-based point.
+
+- Parameters: `ptr, reg, reg`
+- Notes: text uses the current fill color and current text size
+
+```asm
+la   s0, msg
+li   s1, 256
+li   s2, 256
+TEXT_CENTER s0, s1, s2
+```
+
+### `ITEXT_CENTER str, cx, cy`
+
+Immediate center-point version of `TEXT_CENTER`.
+
+```asm
+la s0, msg
+ITEXT_CENTER s0, 256, 256
+```
+
 ### `TEXT_WIDTH dest, str`
 
 Computes string width in pixels.

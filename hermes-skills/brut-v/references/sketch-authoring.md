@@ -174,10 +174,17 @@ Not allowed unless the user asks for a fixed composition:
 For a request like "select 12 circles from a 4x4 grid and rank a path", the
 sketch should allocate arrays such as `selected`, `visited`, `order`, and
 `ranks`, use `IRANDOM` until exactly 12 unique indices are selected, compute a
-bounded path order with RISC-V loops, and draw from those computed arrays.
+bounded path order with RISC-V loops, and draw from those computed arrays. If
+the user asks for path improvement, run a bounded 2-opt style swap pass over the
+`order` array using squared center-point distances.
 
 If the exact algorithm is too large for a sketch, implement and name a bounded
 approximation. Do not silently replace runtime logic with precomputed data.
+
+Use named procedures for complex sketches instead of one long unrolled `setup`.
+For centered rank labels inside circles, use `ITEXT_SIZE 1` and `TEXT_CENTER`.
+For selected/unselected styling, branch per element and set `ISTROKE BLACK` or
+`ISTROKE GREY` inside that branch before drawing the circle.
 
 ## Shape Construction
 

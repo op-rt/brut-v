@@ -41,6 +41,14 @@ If no run is specified, audit the latest saved atelier run.
      itself, such as hardcoded random selections, path orders, or ranks;
    - use of external Python/JavaScript/shell reasoning to satisfy a requested
      sketch algorithm instead of implementing it in RISC-V;
+   - claims of "shortest path" when the source only implements a greedy walk, or
+     when it lacks the requested 2-opt style swap pass;
+   - selected/unselected style bugs, such as all circles using the same stroke
+     despite the prompt asking black selected circles and grey others;
+   - text labels that are not small or centered, especially labels drawn with a
+     large `ITEXT_SIZE` or fixed manual offsets instead of `TEXT_CENTER`;
+   - excessive unrolled drawing code where loops and procedures would better
+     express the requested algorithm;
    - loops that may hit the runtime step limit;
    - RARS compatibility risks;
    - visual risks such as blank output, off-canvas coordinates, or invisible
@@ -69,3 +77,7 @@ Do not rewrite the sketch unless the user asks. Do not edit repo source files.
 When the prompt requested random selection, sorting, ranking, pathfinding, or
 simulation, treat hardcoded final result arrays as an audit finding unless the
 user explicitly asked for a fixed static design.
+
+When the prompt asks for an optimized path, distinguish exact optimum,
+nearest-neighbor heuristic, and 2-opt heuristic. Do not accept a greedy path as
+"shortest" if the requested optimization pass is missing.

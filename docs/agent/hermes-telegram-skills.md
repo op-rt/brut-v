@@ -52,6 +52,15 @@ randomly and calculate a shortest path" should produce RISC-V code that calls
 BRUT-V random macros, stores selection arrays, compares distances, and writes
 ranks at runtime.
 
+For path prompts, prefer a named heuristic rather than a false exact claim. A
+good default for 12 selected grid points is: nearest-neighbor initial route,
+then a bounded 2-opt style swap pass over the `order` array using squared center
+distances.
+
+For label prompts, use `ITEXT_SIZE 1` for small text and center labels with
+`TEXT_CENTER` or `ITEXT_CENTER`. Do not use large text scales or fixed offsets
+for one- and two-digit rank labels.
+
 On success, the final response should contain exactly one line:
 
 ```text

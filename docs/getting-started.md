@@ -390,7 +390,7 @@ The `.data` section stores values that the program can read later. Here, `msg:` 
 
 `la s0, msg` loads the address of the string into `s0`, so `TEXT` can read the characters from memory.
 
-To center text, combine `TEXT_WIDTH` and `TEXT_HEIGHT`:
+To center text, use `TEXT_CENTER`:
 
 ```asm
 .data
@@ -404,18 +404,7 @@ setup:
     ITEXT_SIZE 5
 
     la   s0, msg
-
-    TEXT_WIDTH t0, s0
-    srli t0, t0, 1
-    li   t1, 256
-    sub  s1, t1, t0      # x = center - text_width / 2
-
-    TEXT_HEIGHT t0, s0
-    srli t0, t0, 1
-    li   t1, 256
-    sub  s2, t1, t0      # y = center - text_height / 2
-
-    TEXT s0, s1, s2
+    ITEXT_CENTER s0, 256, 256
     ret
 ```
 

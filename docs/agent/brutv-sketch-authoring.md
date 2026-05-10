@@ -183,11 +183,50 @@ Then `setup` should:
 2. call `IRANDOM` in a loop until exactly 12 unique indices are selected;
 3. compute the path order with bounded RISC-V loops, such as a nearest-neighbor
    distance heuristic over squared center-point distances;
-4. store ranks in memory;
-5. draw lines, circles, and labels from the computed arrays.
+4. when path improvement is requested, run a bounded 2-opt style swap pass over
+   the `order` array;
+5. store ranks in memory;
+6. draw lines, circles, and labels from the computed arrays.
 
 If the exact algorithm is too large for a sketch, implement and name a bounded
 approximation. Do not silently replace runtime logic with precomputed data.
+
+Use procedures to keep complex sketches readable:
+
+```asm
+setup:
+    ISIZE 512, 512
+    call init_grid
+    call select_unique_random
+    call build_initial_path
+    call improve_path_2opt
+    call draw_scene
+    ret
+```
+
+For centered labels, set a small text size and use `TEXT_CENTER`:
+
+```asm
+ITEXT_SIZE 1
+la s0, rank10
+TEXT_CENTER s0, s1, s2
+```
+
+For selected/unselected styling, branch per element and set stroke inside the
+branch:
+
+```asm
+lw   t0, 0(s_selected)
+beq  t0, x0, unselected_circle
+ISTROKE BLACK
+ISTROKE_WEIGHT 3
+j    draw_circle
+unselected_circle:
+ISTROKE GREY
+ISTROKE_WEIGHT 1
+draw_circle:
+CIRCLE s_x, s_y, s_radius
+```
 
 ## Shape Construction
 

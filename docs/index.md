@@ -150,7 +150,9 @@ Important detail:
 - text uses `fill`
 - text does not use `stroke`
 
-The built-in font is an 8x8 bitmap font, scaled by `TEXT_SIZE` or `ITEXT_SIZE`.
+The built-in font is an 8x8 bitmap font, scaled by `TEXT_SIZE` or
+`ITEXT_SIZE`. Use `TEXT_CENTER` or `ITEXT_CENTER` when a label should be
+centered on a point.
 
 ## Animation
 
