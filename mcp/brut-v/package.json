@@ -1,0 +1,21 @@
+{
+  "name": "@brut-v/mcp-server",
+  "version": "0.1.0",
+  "description": "Local MCP server exposing BRUT-V documentation, sketches, prompts, and sketch validation.",
+  "type": "module",
+  "bin": {
+    "brut-v-mcp": "./server.mjs"
+  },
+  "scripts": {
+    "check": "node --check server.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
