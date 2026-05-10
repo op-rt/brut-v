@@ -22,6 +22,7 @@ BRUT-V is a creative coding framework where visual sketches are written in a com
 - For browser/runtime/canvas integration, load `skill_view("brut-v", "references/web-runtime.md")`.
 - For copyable sketch patterns, load `skill_view("brut-v", "references/examples.md")`.
 - For Hermes atelier, Telegram, memory, MCP, and professor-mode direction, load `skill_view("brut-v", "references/hermes-integration.md")`.
+- For the generate-render-critique-iterate loop, load `skill_view("brut-v", "references/creative-loop.md")`.
 
 ## Default Workflow
 
@@ -37,6 +38,10 @@ BRUT-V is a creative coding framework where visual sketches are written in a com
 For a creative atelier request, generate a sketch, validate it through the BRUT-V MCP server when available, then iterate from diagnostics or render feedback. Reuse the user's persistent style memory when choosing composition, palette, motion, density, and constraints.
 
 For a professor-mode request, explain the sketch in terms of concrete RISC-V behavior: labels, procedures, registers, memory, macro expansion, control flow, and the visual effect of the code. Prefer teaching the user how to reason about the sketch over merely giving a fixed answer.
+
+When MCP atelier tools are available, do not treat source generation as the end
+of a creative task. Render and save candidates with `render_and_save_sketch`,
+use `parentRunId` for iterations, and report the selected `sessionId`/`runId`.
 
 ## Critical Rules
 

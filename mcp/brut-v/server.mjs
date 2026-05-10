@@ -72,6 +72,13 @@ const DOC_RESOURCES = [
         relativePath: "docs/agent/hermes-integration.md",
     },
     {
+        key: "brut-v-hermes-creative-loop",
+        uri: "brut-v://docs/agent/hermes-creative-loop",
+        title: "BRUT-V Hermes Creative Loop",
+        description: "Operational loop for Hermes creative iteration, Telegram UX, style memory, and run curation.",
+        relativePath: "docs/agent/hermes-creative-loop.md",
+    },
+    {
         key: "brut-v-hermes-skill",
         uri: "brut-v://hermes/skill",
         title: "BRUT-V Hermes Skill",
@@ -105,6 +112,13 @@ const DOC_RESOURCES = [
         title: "BRUT-V Hermes Skill Integration Reference",
         description: "Portable skill reference for atelier, Telegram, memory, MCP, and professor-mode workflows.",
         relativePath: "hermes-skills/brut-v/references/hermes-integration.md",
+    },
+    {
+        key: "brut-v-hermes-skill-creative-loop",
+        uri: "brut-v://hermes/skill/references/creative-loop",
+        title: "BRUT-V Hermes Skill Creative Loop Reference",
+        description: "Portable skill reference for the generate, render, critique, iterate loop.",
+        relativePath: "hermes-skills/brut-v/references/creative-loop.md",
     },
 ];
 
@@ -445,6 +459,23 @@ async function findAtelierRun(sessionIdInput, runIdInput) {
     if (matches.length > 1)
         throw new Error(`Run id is ambiguous; provide sessionId for ${runId}.`);
     return matches[0];
+}
+
+async function readAtelierRunForContext(paths, includeSource) {
+    const metadata = await readJson(paths.metadataPath);
+    const source = includeSource ? await fs.readFile(paths.sourcePath, "utf8") : undefined;
+    let pngBase64 = null;
+    try {
+        pngBase64 = (await fs.readFile(paths.renderPath)).toString("base64");
+    } catch {
+        pngBase64 = null;
+    }
+
+    return {
+        metadata,
+        source,
+        pngBase64,
+    };
 }
 
 async function listDiskSketchNames() {
@@ -1069,6 +1100,81 @@ server.registerTool(
     },
 );
 
+server.registerTool(
+    "get_atelier_context",
+    {
+        title: "Get BRUT-V Atelier Context",
+        description: "Return recent atelier runs and optionally a selected run with source and image content for Hermes iteration.",
+        inputSchema: {
+            sessionId: z.string().optional().describe("Atelier session id. If omitted, returns recent runs across sessions."),
+            runId: z.string().optional().describe("Run id to select. If omitted, selectLatest can choose the newest run."),
+            limit: z.number().int().min(1).max(50).optional().describe("Number of recent runs to include. Defaults to 8."),
+            selectLatest: z.boolean().optional().describe("Select newest run when runId is omitted. Defaults to false."),
+            includeSource: z.boolean().optional().describe("Include selected run source. Defaults to true."),
+            includeImageContent: z.boolean().optional().describe("Return selected PNG as MCP image content. Defaults to false."),
+            includePngBase64: z.boolean().optional().describe("Include selected PNG base64 in structuredContent. Defaults to false."),
+            request: z.string().optional().describe("Current user request or iteration instruction."),
+            styleMemory: z.string().optional().describe("Relevant Hermes style memory excerpt."),
+        },
+    },
+    async ({
+        sessionId,
+        runId,
+        limit = 8,
+        selectLatest = false,
+        includeSource = true,
+        includeImageContent = false,
+        includePngBase64 = false,
+        request,
+        styleMemory,
+    }) => {
+        try {
+            const runs = await listAtelierRunMetadata(sessionId, limit);
+            let selectedRunId = runId;
+            let selectedSessionId = sessionId;
+
+            if (!selectedRunId && selectLatest && runs.length) {
+                selectedRunId = runs[0].runId;
+                selectedSessionId = runs[0].sessionId;
+            }
+
+            let selected = null;
+            let pngBase64 = null;
+            if (selectedRunId) {
+                const paths = await findAtelierRun(selectedSessionId, selectedRunId);
+                const run = await readAtelierRunForContext(paths, includeSource);
+                pngBase64 = run.pngBase64;
+                selected = {
+                    metadata: run.metadata,
+                    ...(includeSource ? { source: run.source } : {}),
+                    ...(includePngBase64 && pngBase64 ? { pngBase64 } : {}),
+                };
+            }
+
+            const output = {
+                ok: true,
+                root: relativeWebPath(atelierRoot),
+                sessionId: sessionId ? sanitizeSegment(sessionId, "default") : null,
+                request: request ?? null,
+                styleMemory: styleMemory ?? null,
+                recentRuns: runs,
+                selected,
+                nextActions: [
+                    "Generate a BRUT-V sketch if no selected run exists.",
+                    "Use render_and_save_sketch for each rendered candidate.",
+                    "Use selected.metadata.runId as parentRunId when iterating.",
+                    "Critique the render against the request and styleMemory before changing code.",
+                    "Return runId, image, concise critique, and the next concrete option to the user.",
+                ],
+            };
+
+            return fileResult(output, pngBase64, includeImageContent);
+        } catch (error) {
+            return errorResult(error.message);
+        }
+    },
+);
+
 server.registerPrompt(
     "create-brutv-sketch",
     {
@@ -1214,6 +1320,163 @@ server.registerPrompt(
                     "",
                     "Do not include `.include \"../core/core.s\"` for web sketches.",
                     "End every setup/draw procedure with ret.",
+                ].join("\n"),
+            },
+        }],
+    }),
+);
+
+server.registerPrompt(
+    "run-brutv-creative-loop",
+    {
+        title: "Run BRUT-V Creative Loop",
+        description: "Guide Hermes through generate, render, critique, iterate, and save for a BRUT-V atelier session.",
+        argsSchema: {
+            request: z.string(),
+            sessionId: z.string().optional(),
+            styleMemory: z.string().optional(),
+            interactionMode: z.enum(["agent", "telegram", "voice", "kanban"]).optional(),
+            iterationBudget: z.string().optional(),
+        },
+    },
+    ({
+        request,
+        sessionId = "default",
+        styleMemory = "No explicit style memory was provided.",
+        interactionMode = "agent",
+        iterationBudget = 3,
+    }) => ({
+        messages: [{
+            role: "user",
+            content: {
+                type: "text",
+                text: [
+                    "Run a BRUT-V creative loop as Hermes.",
+                    "",
+                    `Interaction mode: ${interactionMode}`,
+                    `Session id: ${sessionId}`,
+                    `Iteration budget: ${iterationBudget}`,
+                    "",
+                    "Creative request:",
+                    request,
+                    "",
+                    "Style memory:",
+                    styleMemory,
+                    "",
+                    "Protocol:",
+                    "1. Call get_atelier_context with the session id, request, styleMemory, limit 8, and selectLatest true.",
+                    "2. If there is no suitable selected run, generate a complete BRUT-V sketch from the request.",
+                    "3. Call render_and_save_sketch with sessionId, prompt, styleMemory, notes, tags, and parentRunId when iterating from a prior run.",
+                    "4. Inspect the returned PNG and image metadata. If assembly/runtime failed, fix the source and render again within budget.",
+                    "5. Critique the image against the request and style memory before changing code.",
+                    "6. Iterate only when the critique names a concrete change. Save each candidate with parentRunId.",
+                    "7. Stop when a candidate is good enough or the budget is exhausted.",
+                    "",
+                    "Response rules:",
+                    "- For Telegram mode, keep the reply short: image, runId, one-sentence critique, and 2-3 next commands.",
+                    "- Do not paste the whole source unless the user asks.",
+                    "- Mention runId and sessionId so the next turn can continue.",
+                    "- If user preference was learned, propose a concise Hermes memory update.",
+                    "",
+                    "BRUT-V rules:",
+                    "- Do not include `.include \"../core/core.s\"` for web sketches.",
+                    "- End every setup/draw procedure with ret.",
+                    "- Prefer immediate macros for static literals and register macros for computed values.",
+                    "- Use saved registers for persistent animation state.",
+                ].join("\n"),
+            },
+        }],
+    }),
+);
+
+server.registerPrompt(
+    "continue-brutv-iteration",
+    {
+        title: "Continue BRUT-V Iteration",
+        description: "Guide Hermes through a concrete iteration from a saved atelier run.",
+        argsSchema: {
+            sessionId: z.string(),
+            parentRunId: z.string(),
+            request: z.string(),
+            critique: z.string().optional(),
+            styleMemory: z.string().optional(),
+        },
+    },
+    ({
+        sessionId,
+        parentRunId,
+        request,
+        critique = "No prior critique was provided.",
+        styleMemory = "No explicit style memory was provided.",
+    }) => ({
+        messages: [{
+            role: "user",
+            content: {
+                type: "text",
+                text: [
+                    "Continue a BRUT-V atelier iteration from a saved run.",
+                    "",
+                    `Session id: ${sessionId}`,
+                    `Parent run id: ${parentRunId}`,
+                    "",
+                    "User request:",
+                    request,
+                    "",
+                    "Prior critique:",
+                    critique,
+                    "",
+                    "Style memory:",
+                    styleMemory,
+                    "",
+                    "Protocol:",
+                    "1. Call get_atelier_context with sessionId, runId=parentRunId, includeSource true, includeImageContent true, and the request/styleMemory.",
+                    "2. Inspect the parent source, render image, validation, runtime, and image metadata.",
+                    "3. Modify only what is needed for the requested iteration.",
+                    "4. Call render_and_save_sketch with parentRunId set to the parent run id.",
+                    "5. If the result fails validation/runtime or is visually worse, fix once before reporting.",
+                    "6. Report the new runId, the concrete change, and the next useful option.",
+                ].join("\n"),
+            },
+        }],
+    }),
+);
+
+server.registerPrompt(
+    "extract-brutv-style-memory",
+    {
+        title: "Extract BRUT-V Style Memory",
+        description: "Convert user feedback and selected runs into concise Hermes memory updates.",
+        argsSchema: {
+            feedback: z.string(),
+            currentStyleMemory: z.string().optional(),
+            runSummary: z.string().optional(),
+        },
+    },
+    ({
+        feedback,
+        currentStyleMemory = "No current style memory was provided.",
+        runSummary = "No run summary was provided.",
+    }) => ({
+        messages: [{
+            role: "user",
+            content: {
+                type: "text",
+                text: [
+                    "Extract BRUT-V style memory updates from this user feedback.",
+                    "",
+                    "User feedback:",
+                    feedback,
+                    "",
+                    "Current style memory:",
+                    currentStyleMemory,
+                    "",
+                    "Run summary:",
+                    runSummary,
+                    "",
+                    "Return concise memory candidates only when they are durable preferences.",
+                    "Separate visual preferences from coding constraints.",
+                    "Do not store one-off prompt details as memory.",
+                    "If Hermes memory tools are available, save the durable updates there after user confirmation or when the preference is explicit.",
                 ].join("\n"),
             },
         }],

@@ -12,8 +12,9 @@ It exposes:
 - Tools to validate sketch source with the browser assembler.
 - A tool to render a sketch through the headless BRUT-V runtime and return a PNG capture.
 - Tools to save and retrieve atelier runs in the controlled `mcp/brut-v/atelier-runs/` directory.
+- A tool to retrieve atelier session context for Hermes creative iteration.
 - Prompts for sketch creation, debugging, macro explanation, and Processing-to-BRUT-V translation.
-- Prompts for the living atelier and professor-mode workflows.
+- Prompts for the living atelier, creative loop, style memory, and professor-mode workflows.
 
 This version has constrained writes only inside `web-static/mcp/brut-v/atelier-runs/`.
 It can validate, render, and save draft runs, but it does not edit source
@@ -71,6 +72,7 @@ Allowed today:
 - save a generated sketch into `mcp/brut-v/atelier-runs/`;
 - render and save source, PNG, and metadata into `mcp/brut-v/atelier-runs/`;
 - list and retrieve saved atelier runs;
+- retrieve recent session context and selected parent runs for iteration;
 - read macro reference material;
 - provide prompts for creative, debug, porting, atelier, and professor workflows.
 

@@ -33,6 +33,7 @@ The source-of-truth assembly framework lives one directory above this repo:
 - `docs/agent/brutv-web-runtime.md`: browser runtime, assembler, VM, canvas, console.
 - `docs/agent/brutv-examples.md`: canonical sketch patterns to copy from.
 - `docs/agent/hermes-integration.md`: Hermes integration surface, security model, and product direction.
+- `docs/agent/hermes-creative-loop.md`: generate, render, critique, iterate workflow for Hermes and Telegram.
 - `hermes-skills/brut-v/SKILL.md`: installable Hermes skill entry point.
 - `mcp/brut-v/server.mjs`: MCP server entry point for clients that support Model Context Protocol.
 
@@ -52,6 +53,11 @@ The main product goal is a living BRUT-V atelier available from Hermes agents,
 including a Telegram-connected Hermes bot. Hermes should be able to generate
 sketches, call BRUT-V MCP tools, validate code, drive the runtime, retrieve a
 render, critique it against a persistent style memory, and iterate.
+
+The operational creative loop is: `get_atelier_context` -> generate or edit
+source -> `render_and_save_sketch` -> inspect PNG and metadata -> critique
+against the request/style memory -> iterate with `parentRunId` or report the
+selected run.
 
 The second major goal is professor mode. Hermes should help the user build
 RISC-V skill by explaining sketches line by line, tracing register usage,

@@ -139,6 +139,7 @@ Current tools:
 - `render_and_save_sketch`
 - `list_agent_runs`
 - `get_agent_run`
+- `get_atelier_context`
 
 Current prompts:
 
@@ -146,6 +147,11 @@ Current prompts:
 - `debug-brutv-sketch`
 - `explain-brutv-macro`
 - `port-processing-to-brutv`
+- `start-brutv-atelier-session`
+- `run-brutv-creative-loop`
+- `continue-brutv-iteration`
+- `extract-brutv-style-memory`
+- `teach-brutv-sketch`
 
 Future write/browser-control tools could include:
 

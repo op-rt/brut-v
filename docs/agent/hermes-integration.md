@@ -23,6 +23,8 @@ interaction surface, from the user's Hermes Telegram bot.
 - `HERMES.md`: top-level repository orientation for agents.
 - `docs/agent/*.md`: focused agent documentation for architecture, sketch
   authoring, macros, runtime behavior, examples, and this Hermes integration.
+- `docs/agent/hermes-creative-loop.md`: operational generate, render, critique,
+  iterate loop for Hermes and Telegram.
 - `hermes-skills/brut-v/`: portable Hermes skill with compact references.
 - `mcp/brut-v/`: local stdio MCP server exposing docs, sketches, validation,
   rendering, controlled atelier run storage, and workflow prompts.
@@ -69,6 +71,8 @@ only the MCP server and future approved runtime endpoints.
 - `render_and_save_sketch`: render a sketch, then save source, PNG, and metadata.
 - `list_agent_runs`: list saved atelier attempts.
 - `get_agent_run`: retrieve a saved run, with optional source and image content.
+- `get_atelier_context`: retrieve recent session history and optionally a
+  selected run with source and image for iteration.
 
 ## Current MCP Prompts
 
@@ -77,6 +81,9 @@ only the MCP server and future approved runtime endpoints.
 - `explain-brutv-macro`: explain a macro and its usage.
 - `port-processing-to-brutv`: port a Processing-style idea to BRUT-V.
 - `start-brutv-atelier-session`: structure a creative iteration session.
+- `run-brutv-creative-loop`: guide Hermes through generate/render/critique/iterate.
+- `continue-brutv-iteration`: guide Hermes through a parent-run iteration.
+- `extract-brutv-style-memory`: derive durable memory candidates from feedback.
 - `teach-brutv-sketch`: structure a professor-mode explanation.
 
 ## Security Model
@@ -123,8 +130,6 @@ prompts, and iterative drafts.
 
 The next MCP/runtime layer should add:
 
-- `run_frames`: execute an animated sketch for a bounded number of frames.
-- `get_canvas_snapshot`: return PNG/image data plus basic render metadata.
 - `compare_agent_runs`: compare image metadata and selected renders.
 - `promote_agent_run`: copy a selected draft into a deliberate source path.
 - `regenerate_sketches_fs`: regenerate embedded sketches only on explicit call.
