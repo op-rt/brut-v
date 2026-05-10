@@ -16,7 +16,8 @@ Use this file as the first orientation layer. Load the more specific files in `d
 - `build/`: generation scripts for embedded core and sketch file systems.
 - `hermes-skills/brut-v/`: portable Hermes skill for BRUT-V sketch generation, debugging, and runtime work.
 - `mcp/brut-v/`: local stdio MCP server exposing BRUT-V docs, sketches, validation tools, and prompts.
-  It also exposes bounded PNG rendering through the shared runtime helper.
+- `mcp/brut-v/atelier-runs/`: ignored local run store for agent-generated sketches, PNG renders, and metadata.
+  The MCP server writes only to this controlled directory for atelier drafts.
 
 The source-of-truth assembly framework lives one directory above this repo:
 
@@ -40,6 +41,7 @@ The source-of-truth assembly framework lives one directory above this repo:
 - Do not edit `core-fs.js` or `sketches-fs.js` by hand. Regenerate them.
 - Core changes belong in `../core/*.s`, then run `python web-static/build/build_core_fs.py`.
 - Sketch changes belong in `../sketches/*.asm`, then run `python web-static/build/build_sketches_fs.py`.
+- Agent atelier drafts belong in ignored `mcp/brut-v/atelier-runs/`, not in shipped examples.
 - Web-static is the Git repository. The parent directory is a broader workspace, not the repo.
 - Sketches do not need `.include "../core/core.s"` in the web editor; the assembler imports `core.s` automatically.
 - Keep examples simple, explicit, and close to Processing concepts where possible.

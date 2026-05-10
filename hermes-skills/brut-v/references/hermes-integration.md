@@ -33,9 +33,15 @@ Configure the BRUT-V MCP server as a local stdio server:
 }
 ```
 
-Current tools are non-writing: docs, sketches, macro reference, assembler
-validation, and bounded PNG rendering. Do not assume write or publishing tools
-exist until the MCP server exposes them.
+Current tools are constrained: docs, sketches, macro reference, assembler
+validation, bounded PNG rendering, and local atelier run storage in ignored
+`mcp/brut-v/atelier-runs/`. Do not assume publishing tools exist until the MCP server
+exposes them.
+
+Use `render_and_save_sketch` during creative sessions when the result should be
+available for later curation. Use `save_agent_sketch` for non-rendered drafts,
+`list_agent_runs` to review session history, and `get_agent_run` to retrieve a
+saved sketch or PNG.
 
 ## Style Memory
 
@@ -53,7 +59,7 @@ asks for a shareable project style profile.
 ## Safety
 
 - Do not request arbitrary filesystem access.
-- Keep writes scoped to approved sketch/draft paths.
+- Keep writes scoped to `mcp/brut-v/atelier-runs/` or approved sketch/draft paths.
 - Keep runtime execution bounded by frame count, instruction count, timeout,
   and output size.
 - Do not hand-edit generated files.

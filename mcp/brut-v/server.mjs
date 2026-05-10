@@ -4,6 +4,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -17,6 +18,8 @@ const serverDir = path.dirname(serverFile);
 const webStaticRoot = path.resolve(serverDir, "../..");
 const workspaceRoot = path.resolve(webStaticRoot, "..");
 const sketchesRoot = path.join(workspaceRoot, "sketches");
+const atelierRoot = path.join(serverDir, "atelier-runs");
+const ATELIER_METADATA_VERSION = 1;
 
 const DOC_RESOURCES = [
     {
@@ -154,6 +157,17 @@ function errorResult(message, extra = {}) {
     };
 }
 
+function fileResult(value, imageBase64 = null, includeImageContent = false) {
+    const content = [{ type: "text", text: JSON.stringify(value, null, 2) }];
+    if (includeImageContent && imageBase64)
+        content.push({ type: "image", data: imageBase64, mimeType: "image/png" });
+    return {
+        content,
+        structuredContent: value,
+        isError: !value.ok,
+    };
+}
+
 function resourceDescription(resource) {
     return {
         uri: resource.uri,
@@ -179,6 +193,258 @@ function normalizeSketchName(input) {
             return candidate;
 
     return candidates[0];
+}
+
+function sanitizeSegment(input, fallback) {
+    const raw = String(input ?? "").trim();
+    const normalized = raw
+        .replace(/[^A-Za-z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
+    return normalized || fallback;
+}
+
+function newRunId(prefix = "run") {
+    const stamp = new Date().toISOString()
+        .replaceAll(":", "")
+        .replaceAll(".", "")
+        .replace("T", "-")
+        .replace("Z", "");
+    return `${sanitizeSegment(prefix, "run")}-${stamp}-${randomUUID().slice(0, 8)}`;
+}
+
+function normalizeTags(tags) {
+    if (!Array.isArray(tags)) return [];
+    return tags
+        .map(tag => String(tag).trim())
+        .filter(Boolean)
+        .slice(0, 32);
+}
+
+function relativeWebPath(absolutePath) {
+    return path.relative(webStaticRoot, absolutePath).replaceAll(path.sep, "/");
+}
+
+function atelierRunPaths(sessionIdInput, runIdInput) {
+    const sessionId = sanitizeSegment(sessionIdInput, "default");
+    const runId = sanitizeSegment(runIdInput, newRunId());
+    const runDir = resolveInside(atelierRoot, `${sessionId}/${runId}`);
+    return {
+        sessionId,
+        runId,
+        runDir,
+        sourcePath: path.join(runDir, "sketch.asm"),
+        renderPath: path.join(runDir, "render.png"),
+        metadataPath: path.join(runDir, "metadata.json"),
+    };
+}
+
+async function writeJson(filePath, value) {
+    await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function readJson(filePath) {
+    return JSON.parse(await fs.readFile(filePath, "utf8"));
+}
+
+function sketchMetadata({
+    sessionId,
+    runId,
+    parentRunId,
+    name,
+    sourceOrigin,
+    prompt,
+    styleMemory,
+    notes,
+    tags,
+    files,
+    validation,
+    render,
+}) {
+    const now = new Date().toISOString();
+    return {
+        version: ATELIER_METADATA_VERSION,
+        createdAt: now,
+        updatedAt: now,
+        sessionId,
+        runId,
+        parentRunId: parentRunId ? sanitizeSegment(parentRunId, "") : null,
+        name,
+        sourceOrigin,
+        prompt: prompt ?? null,
+        styleMemory: styleMemory ?? null,
+        notes: notes ?? null,
+        tags: normalizeTags(tags),
+        files,
+        validation,
+        render,
+    };
+}
+
+async function saveAtelierRun({
+    source,
+    name,
+    sourceOrigin,
+    sessionId,
+    runId,
+    parentRunId,
+    prompt,
+    styleMemory,
+    notes,
+    tags,
+    validation,
+    render,
+    png,
+    overwrite = false,
+}) {
+    const paths = atelierRunPaths(sessionId, runId ?? newRunId(render ? "render" : "sketch"));
+    if (!overwrite) {
+        try {
+            await fs.stat(paths.metadataPath);
+            throw new Error(`Atelier run already exists: ${paths.sessionId}/${paths.runId}`);
+        } catch (error) {
+            if (error.code !== "ENOENT") throw error;
+        }
+    }
+    await fs.mkdir(paths.runDir, { recursive: true });
+    await fs.writeFile(paths.sourcePath, source, "utf8");
+    if (png) await fs.writeFile(paths.renderPath, png);
+
+    const files = {
+        directory: relativeWebPath(paths.runDir),
+        source: relativeWebPath(paths.sourcePath),
+        metadata: relativeWebPath(paths.metadataPath),
+        render: png ? relativeWebPath(paths.renderPath) : null,
+    };
+    const metadata = sketchMetadata({
+        sessionId: paths.sessionId,
+        runId: paths.runId,
+        parentRunId,
+        name,
+        sourceOrigin,
+        prompt,
+        styleMemory,
+        notes,
+        tags,
+        files,
+        validation,
+        render,
+    });
+    await writeJson(paths.metadataPath, metadata);
+    return metadata;
+}
+
+async function listAtelierRunMetadata(sessionIdInput = null, limit = 50) {
+    const sessions = [];
+
+    try {
+        if (sessionIdInput) {
+            const sessionId = sanitizeSegment(sessionIdInput, "default");
+            sessions.push({ name: sessionId, path: resolveInside(atelierRoot, sessionId) });
+        } else {
+            const entries = await fs.readdir(atelierRoot, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory())
+                    sessions.push({ name: entry.name, path: resolveInside(atelierRoot, entry.name) });
+            }
+        }
+    } catch {
+        return [];
+    }
+
+    const runs = [];
+    for (const session of sessions) {
+        let entries = [];
+        try {
+            entries = await fs.readdir(session.path, { withFileTypes: true });
+        } catch {
+            continue;
+        }
+
+        for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            const metadataPath = resolveInside(atelierRoot, `${session.name}/${entry.name}/metadata.json`);
+            try {
+                const metadata = await readJson(metadataPath);
+                runs.push(summarizeRun(metadata));
+            } catch {
+                continue;
+            }
+        }
+    }
+
+    return runs
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .slice(0, limit);
+}
+
+function summarizeRun(metadata) {
+    return {
+        sessionId: metadata.sessionId,
+        runId: metadata.runId,
+        parentRunId: metadata.parentRunId,
+        createdAt: metadata.createdAt,
+        updatedAt: metadata.updatedAt,
+        name: metadata.name,
+        sourceOrigin: metadata.sourceOrigin,
+        tags: metadata.tags ?? [],
+        prompt: metadata.prompt,
+        notes: metadata.notes,
+        ok: metadata.render?.ok ?? metadata.validation?.ok ?? false,
+        validationOk: metadata.validation?.ok ?? false,
+        renderOk: metadata.render?.ok ?? null,
+        image: metadata.render?.image ?? null,
+        files: metadata.files,
+    };
+}
+
+async function findAtelierRun(sessionIdInput, runIdInput) {
+    const runId = sanitizeSegment(runIdInput, "");
+    if (!runId)
+        throw new Error("runId is required.");
+
+    if (sessionIdInput) {
+        const sessionId = sanitizeSegment(sessionIdInput, "default");
+        const runDir = resolveInside(atelierRoot, `${sessionId}/${runId}`);
+        return {
+            sessionId,
+            runId,
+            runDir,
+            sourcePath: path.join(runDir, "sketch.asm"),
+            renderPath: path.join(runDir, "render.png"),
+            metadataPath: path.join(runDir, "metadata.json"),
+        };
+    }
+
+    const matches = [];
+    try {
+        const sessions = await fs.readdir(atelierRoot, { withFileTypes: true });
+        for (const session of sessions) {
+            if (!session.isDirectory()) continue;
+            const runDir = resolveInside(atelierRoot, `${session.name}/${runId}`);
+            try {
+                await fs.stat(path.join(runDir, "metadata.json"));
+                matches.push({
+                    sessionId: session.name,
+                    runId,
+                    runDir,
+                    sourcePath: path.join(runDir, "sketch.asm"),
+                    renderPath: path.join(runDir, "render.png"),
+                    metadataPath: path.join(runDir, "metadata.json"),
+                });
+            } catch {
+                continue;
+            }
+        }
+    } catch {
+        // handled below
+    }
+
+    if (matches.length === 0)
+        throw new Error(`Unknown atelier run: ${runId}`);
+    if (matches.length > 1)
+        throw new Error(`Run id is ambiguous; provide sessionId for ${runId}.`);
+    return matches[0];
 }
 
 async function listDiskSketchNames() {
@@ -549,6 +815,260 @@ server.registerTool(
     },
 );
 
+server.registerTool(
+    "save_agent_sketch",
+    {
+        title: "Save BRUT-V Atelier Sketch",
+        description: "Save a generated BRUT-V sketch into the controlled atelier-runs directory with metadata.",
+        inputSchema: {
+            source: z.string().describe("BRUT-V assembly source to save."),
+            name: z.string().optional().describe("Virtual filename for diagnostics and metadata."),
+            sessionId: z.string().optional().describe("Atelier session id. Defaults to default."),
+            runId: z.string().optional().describe("Optional run id. If omitted, one is generated."),
+            parentRunId: z.string().optional().describe("Optional parent run id for iterations."),
+            prompt: z.string().optional().describe("Original creative request or instruction."),
+            styleMemory: z.string().optional().describe("Style memory excerpt used for this run."),
+            notes: z.string().optional().describe("Agent or user notes."),
+            tags: z.array(z.string()).optional().describe("Short tags for later filtering."),
+            validate: z.boolean().optional().describe("Validate before saving. Defaults to true."),
+            autoIncludeCore: z.boolean().optional().describe("Whether to auto-import core.s during validation. Defaults to true."),
+            overwrite: z.boolean().optional().describe("Allow replacing an existing runId. Defaults to false."),
+        },
+    },
+    async ({
+        source,
+        name = "agent-sketch.asm",
+        sessionId = "default",
+        runId,
+        parentRunId,
+        prompt,
+        styleMemory,
+        notes,
+        tags = [],
+        validate = true,
+        autoIncludeCore = true,
+        overwrite = false,
+    }) => {
+        try {
+            const mainName = path.posix.basename(String(name || "agent-sketch.asm"));
+            const validation = validate
+                ? validateSource(source, mainName, autoIncludeCore)
+                : null;
+            const metadata = await saveAtelierRun({
+                source,
+                name: mainName,
+                sourceOrigin: "provided",
+                sessionId,
+                runId,
+                parentRunId,
+                prompt,
+                styleMemory,
+                notes,
+                tags,
+                validation,
+                render: null,
+                png: null,
+                overwrite,
+            });
+
+            return jsonResult({
+                ok: validation ? validation.ok : true,
+                run: summarizeRun(metadata),
+                validation,
+            });
+        } catch (error) {
+            return errorResult(error.message);
+        }
+    },
+);
+
+server.registerTool(
+    "render_and_save_sketch",
+    {
+        title: "Render And Save BRUT-V Atelier Sketch",
+        description: "Render a BRUT-V sketch, save source/PNG/metadata in atelier-runs, and return the capture.",
+        inputSchema: {
+            source: z.string().optional().describe("BRUT-V assembly source. If omitted, provide name."),
+            name: z.string().optional().describe("Existing sketch name or virtual filename for diagnostics."),
+            sourceMode: z.enum(["auto", "disk", "embedded"]).optional().describe("Where to read name from when source is omitted."),
+            sessionId: z.string().optional().describe("Atelier session id. Defaults to default."),
+            runId: z.string().optional().describe("Optional run id. If omitted, one is generated."),
+            parentRunId: z.string().optional().describe("Optional parent run id for iterations."),
+            prompt: z.string().optional().describe("Original creative request or instruction."),
+            styleMemory: z.string().optional().describe("Style memory excerpt used for this run."),
+            notes: z.string().optional().describe("Agent or user notes."),
+            tags: z.array(z.string()).optional().describe("Short tags for later filtering."),
+            frames: z.number().int().min(1).max(240).optional().describe("Animated frame count to run before capture. Defaults to 1."),
+            maxSteps: z.number().int().min(1).max(200_000_000).optional().describe("Maximum instruction count before aborting."),
+            autoIncludeCore: z.boolean().optional().describe("Whether to auto-import core.s. Defaults to true."),
+            includeImageContent: z.boolean().optional().describe("Return image content in the MCP response. Defaults to true."),
+            includePngBase64: z.boolean().optional().describe("Also include PNG base64 in structuredContent. Defaults to false."),
+            overwrite: z.boolean().optional().describe("Allow replacing an existing runId. Defaults to false."),
+        },
+    },
+    async ({
+        source,
+        name,
+        sourceMode = "auto",
+        sessionId = "default",
+        runId,
+        parentRunId,
+        prompt,
+        styleMemory,
+        notes,
+        tags = [],
+        frames = 1,
+        maxSteps,
+        autoIncludeCore = true,
+        includeImageContent = true,
+        includePngBase64 = false,
+        overwrite = false,
+    }) => {
+        try {
+            let sketchSource = source;
+            let mainName = name ?? "agent-sketch.asm";
+            let sourceOrigin = "provided";
+
+            if (sketchSource == null) {
+                if (!name)
+                    return errorResult("render_and_save_sketch requires either source or name.");
+                const sketch = await readSketch(name, sourceMode);
+                sketchSource = sketch.text;
+                mainName = sketch.name;
+                sourceOrigin = sketch.source;
+            } else {
+                mainName = path.posix.basename(String(mainName || "agent-sketch.asm"));
+            }
+
+            const result = renderSketchSource(sketchSource, {
+                mainName,
+                frames,
+                maxSteps,
+                autoIncludeCore,
+            });
+            const png = result.rgba
+                ? encodePngRgba(result.rgba, result.image.width, result.image.height)
+                : null;
+            const render = result.rgba
+                ? {
+                    ok: result.ok,
+                    stage: result.stage,
+                    runtime: result.runtime,
+                    console: result.console,
+                    image: {
+                        ...result.image,
+                        mimeType: "image/png",
+                        byteLength: png.length,
+                    },
+                }
+                : {
+                    ok: false,
+                    stage: result.stage,
+                    runtime: result.runtime,
+                    console: result.console,
+                    image: null,
+                };
+
+            const metadata = await saveAtelierRun({
+                source: sketchSource,
+                name: mainName,
+                sourceOrigin,
+                sessionId,
+                runId,
+                parentRunId,
+                prompt,
+                styleMemory,
+                notes,
+                tags,
+                validation: result.validation,
+                render,
+                png,
+                overwrite,
+            });
+            const pngBase64 = png ? png.toString("base64") : null;
+            const output = {
+                ok: result.ok,
+                run: summarizeRun(metadata),
+                validation: result.validation,
+                render,
+                ...(includePngBase64 && pngBase64 ? { pngBase64 } : {}),
+            };
+
+            return fileResult(output, pngBase64, includeImageContent);
+        } catch (error) {
+            return errorResult(error.message);
+        }
+    },
+);
+
+server.registerTool(
+    "list_agent_runs",
+    {
+        title: "List BRUT-V Atelier Runs",
+        description: "List saved BRUT-V atelier runs from the controlled atelier-runs directory.",
+        inputSchema: {
+            sessionId: z.string().optional().describe("Optional session id filter."),
+            limit: z.number().int().min(1).max(200).optional().describe("Maximum runs to return. Defaults to 50."),
+        },
+    },
+    async ({ sessionId, limit = 50 }) => {
+        try {
+            return jsonResult({
+                ok: true,
+                root: relativeWebPath(atelierRoot),
+                sessionId: sessionId ? sanitizeSegment(sessionId, "default") : null,
+                runs: await listAtelierRunMetadata(sessionId, limit),
+            });
+        } catch (error) {
+            return errorResult(error.message);
+        }
+    },
+);
+
+server.registerTool(
+    "get_agent_run",
+    {
+        title: "Get BRUT-V Atelier Run",
+        description: "Read a saved BRUT-V atelier run, with optional sketch source and PNG image content.",
+        inputSchema: {
+            runId: z.string().describe("Run id to retrieve."),
+            sessionId: z.string().optional().describe("Session id. Optional if runId is unique."),
+            includeSource: z.boolean().optional().describe("Include saved sketch source. Defaults to true."),
+            includeImageContent: z.boolean().optional().describe("Return image content in the MCP response. Defaults to false."),
+            includePngBase64: z.boolean().optional().describe("Include PNG base64 in structuredContent. Defaults to false."),
+        },
+    },
+    async ({
+        runId,
+        sessionId,
+        includeSource = true,
+        includeImageContent = false,
+        includePngBase64 = false,
+    }) => {
+        try {
+            const paths = await findAtelierRun(sessionId, runId);
+            const metadata = await readJson(paths.metadataPath);
+            const source = includeSource ? await fs.readFile(paths.sourcePath, "utf8") : undefined;
+            let pngBase64 = null;
+            try {
+                pngBase64 = (await fs.readFile(paths.renderPath)).toString("base64");
+            } catch {
+                pngBase64 = null;
+            }
+
+            const output = {
+                ok: true,
+                run: metadata,
+                ...(includeSource ? { source } : {}),
+                ...(includePngBase64 && pngBase64 ? { pngBase64 } : {}),
+            };
+            return fileResult(output, pngBase64, includeImageContent);
+        } catch (error) {
+            return errorResult(error.message);
+        }
+    },
+);
+
 server.registerPrompt(
     "create-brutv-sketch",
     {
@@ -687,9 +1207,10 @@ server.registerPrompt(
                     "Workflow:",
                     "1. Generate one complete BRUT-V sketch.",
                     "2. Validate it with BRUT-V MCP tools if available.",
-                    "3. If render/capture tools are available, run it and inspect the image.",
-                    "4. Critique the result against the style memory.",
-                    "5. Propose the next concrete iteration.",
+                    "3. Render it with render_sketch or render_and_save_sketch.",
+                    "4. Save promising attempts with sessionId, parentRunId, prompt, notes, and tags.",
+                    "5. Critique the result against the style memory.",
+                    "6. Propose the next concrete iteration.",
                     "",
                     "Do not include `.include \"../core/core.s\"` for web sketches.",
                     "End every setup/draw procedure with ret.",

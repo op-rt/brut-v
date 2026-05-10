@@ -11,11 +11,13 @@ It exposes:
 - Tools to list/read/search docs and sketches.
 - Tools to validate sketch source with the browser assembler.
 - A tool to render a sketch through the headless BRUT-V runtime and return a PNG capture.
+- Tools to save and retrieve atelier runs in the controlled `mcp/brut-v/atelier-runs/` directory.
 - Prompts for sketch creation, debugging, macro explanation, and Processing-to-BRUT-V translation.
 - Prompts for the living atelier and professor-mode workflows.
 
-This version is still non-writing. It can validate and render, but it does not
-edit files, regenerate generated files, or publish sketches.
+This version has constrained writes only inside `web-static/mcp/brut-v/atelier-runs/`.
+It can validate, render, and save draft runs, but it does not edit source
+sketches, regenerate generated files, or publish sketches.
 
 ## Install
 
@@ -66,19 +68,22 @@ Allowed today:
 - validate arbitrary sketch source with the browser assembler;
 - validate existing sketches;
 - render a provided or existing sketch to PNG with bounded frames and steps;
+- save a generated sketch into `mcp/brut-v/atelier-runs/`;
+- render and save source, PNG, and metadata into `mcp/brut-v/atelier-runs/`;
+- list and retrieve saved atelier runs;
 - read macro reference material;
 - provide prompts for creative, debug, porting, atelier, and professor workflows.
 
 Not exposed yet:
 
-- file writes;
+- writes outside `mcp/brut-v/atelier-runs/`;
 - generated file regeneration;
 - test execution;
 - publishing.
 
 ## Security Rules
 
-- Future write tools must be scoped to explicit sketch or draft directories.
+- Write tools are scoped to `mcp/brut-v/atelier-runs/`.
 - Future runtime tools must be bounded by frame count, instruction count,
   timeout, and output size.
 - Future regeneration/test tools must be explicit and auditable.
@@ -87,5 +92,5 @@ Not exposed yet:
 
 ## Notes
 
-The server is non-writing. It does not regenerate `core-fs.js` or
-`sketches-fs.js`, and it does not edit files.
+The server does not regenerate `core-fs.js` or `sketches-fs.js`, and it does
+not edit shipped source files.

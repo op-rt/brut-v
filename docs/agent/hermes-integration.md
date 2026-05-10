@@ -25,11 +25,14 @@ interaction surface, from the user's Hermes Telegram bot.
   authoring, macros, runtime behavior, examples, and this Hermes integration.
 - `hermes-skills/brut-v/`: portable Hermes skill with compact references.
 - `mcp/brut-v/`: local stdio MCP server exposing docs, sketches, validation,
-  and workflow prompts.
+  rendering, controlled atelier run storage, and workflow prompts.
+- `mcp/brut-v/atelier-runs/`: ignored local run store for agent-generated sketches, PNG
+  renders, and metadata.
 
-The MCP server is currently non-writing. It can read docs/sketches, validate
-sketches, and render a bounded PNG capture through the headless BRUT-V runtime.
-It does not edit files, regenerate generated files, or publish sketches.
+The MCP server now has constrained write access only inside `mcp/brut-v/atelier-runs/`.
+It can read docs/sketches, validate sketches, render bounded PNG captures, save
+draft sketches, and persist run metadata. It does not edit source-of-truth
+sketches, regenerate generated files, or publish sketches.
 
 ## MCP Configuration
 
@@ -62,6 +65,10 @@ only the MCP server and future approved runtime endpoints.
 - `get_macro_reference`: return the macro reference, optionally filtered.
 - `render_sketch`: assemble, execute, and return a PNG capture for provided or
   existing sketch source.
+- `save_agent_sketch`: save a generated sketch and metadata in `mcp/brut-v/atelier-runs/`.
+- `render_and_save_sketch`: render a sketch, then save source, PNG, and metadata.
+- `list_agent_runs`: list saved atelier attempts.
+- `get_agent_run`: retrieve a saved run, with optional source and image content.
 
 ## Current MCP Prompts
 
@@ -78,8 +85,7 @@ Agents must treat BRUT-V as a constrained creative environment, not as a general
 filesystem shell.
 
 - Do not expose arbitrary file reads or writes through MCP.
-- Keep future write tools scoped to explicit sketch directories or explicit
-  user-approved paths.
+- Keep write tools scoped to `mcp/brut-v/atelier-runs/` or explicit user-approved paths.
 - Keep runtime capture tools bounded by frame count, instruction count, timeout,
   and output size.
 - Never hand-edit generated files such as `core-fs.js` or `sketches-fs.js`.
@@ -97,14 +103,30 @@ Project-level style rules that are safe to share can later live in a tracked
 document such as `docs/agent/style-profile.md`. Private taste and personal
 interaction history should remain in Hermes memory.
 
+## Atelier Run Store
+
+Saved runs use:
+
+```text
+mcp/brut-v/atelier-runs/<sessionId>/<runId>/
+  sketch.asm
+  render.png
+  metadata.json
+```
+
+`metadata.json` records the prompt, style-memory excerpt if provided, parent run,
+validation result, runtime result, image stats, tags, notes, and relative file
+paths. The directory is ignored by Git because it may contain private taste,
+prompts, and iterative drafts.
+
 ## Future Atelier Tools
 
 The next MCP/runtime layer should add:
 
 - `run_frames`: execute an animated sketch for a bounded number of frames.
 - `get_canvas_snapshot`: return PNG/image data plus basic render metadata.
-- `save_agent_sketch`: save a generated sketch to a constrained draft area.
-- `list_agent_runs`: list previous generated attempts and captures.
+- `compare_agent_runs`: compare image metadata and selected renders.
+- `promote_agent_run`: copy a selected draft into a deliberate source path.
 - `regenerate_sketches_fs`: regenerate embedded sketches only on explicit call.
 - `run_tests`: run the relevant BRUT-V test suite.
 
@@ -121,6 +143,8 @@ window.BRUTV_AGENT = {
   getSource,
   setSource,
   assemble,
+  run,
+  render,
   runFrames,
   stop,
   getConsole,

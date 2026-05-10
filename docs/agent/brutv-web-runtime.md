@@ -135,6 +135,10 @@ Current tools:
 - `validate_existing_sketch`
 - `get_macro_reference`
 - `render_sketch`
+- `save_agent_sketch`
+- `render_and_save_sketch`
+- `list_agent_runs`
+- `get_agent_run`
 
 Current prompts:
 
@@ -148,6 +152,7 @@ Future write/browser-control tools could include:
 - `set_sketch`
 - `run_frames`
 - `get_console`
-- `save_sketch`
+- `compare_agent_runs`
+- `promote_agent_run`
 
 Security rule: do not expose arbitrary filesystem write access through a browser hook. Keep write operations scoped to sketches or explicit user-approved files.

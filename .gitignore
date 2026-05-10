@@ -3,6 +3,9 @@ Thumbs.db
 
 node_modules/
 
+atelier-runs/
+mcp/brut-v/atelier-runs/
+
 *.log
 *.tmp
 *.bak
