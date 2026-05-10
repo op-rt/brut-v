@@ -47,6 +47,10 @@ If no run is specified, audit the latest saved atelier run.
      despite the prompt asking black selected circles and grey others;
    - text labels that are not small or centered, especially labels drawn with a
      large `ITEXT_SIZE` or fixed manual offsets instead of `TEXT_ALIGN`;
+   - tangent or arc geometry that uses a smaller helper radius than the
+     displayed circles when the prompt requested tangents on the drawn circles;
+   - draw-order bugs, such as a final filled polygon drawn before the circles
+     even though the prompt requested it on top;
    - excessive unrolled drawing code where loops and procedures would better
      express the requested algorithm;
    - loops that may hit the runtime step limit;

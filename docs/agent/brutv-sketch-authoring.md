@@ -237,6 +237,19 @@ the circle center coordinates directly; avoid manual offsets such as
 `centerX - 3`, because `ITEXT_ALIGN CENTER, CENTER` already centers the whole
 string.
 
+For draw order, remember that the canvas is immediate-mode: the last shape drawn
+appears on top. If the prompt asks for a final filled polygon on top of the
+circles, draw the circles first, then set `IFILL BLACK` and draw the filled
+polygon after them. Do not redraw the white circles after the overlay unless
+the user asks for circles on top.
+
+For tangent and arc constructions around circles, use the same radius as the
+visible circles unless the user explicitly requests inset geometry. A prompt
+such as `r=50`, `same r=50`, or `no shrinking` means the tangent points and arc
+points live on the displayed `CIRCLE` boundary. Do not use a smaller helper
+radius like 45 or `r - strokeWeight`; it will make tangents visually collide
+with the drawn circles.
+
 ## Shape Construction
 
 Manual shape:

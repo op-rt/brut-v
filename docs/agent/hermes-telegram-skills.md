@@ -75,6 +75,19 @@ not accept hand-offset text positions such as `centerX - 3`; the alignment
 macro exists so one- and two-digit labels are centered as whole strings. If a
 brief says "number them 112" while selecting 12 items, treat it as `1-12`.
 
+For tangent or arc prompts, preserve the user's geometric radius. If the prompt
+says `r=50`, "same r", or "no shrinking", the tangent and arc construction must
+use the same radius as the displayed `CIRCLE`; do not silently use an inset
+helper radius to avoid intersections. Reject sources that contain a smaller
+tangent radius, `r - stroke`, `inner radius`, or similar shrinkage unless the
+user explicitly asked for inset geometry.
+
+For layering prompts, remember that BRUT-V draws immediately: later drawing is
+visually on top. If the user asks for the final black filled polygon on top of
+the white circles, the source must draw the grid/circles first, then set black
+fill and draw the polygon after the circle pass. Reject sources that draw the
+filled polygon before the grid, or redraw the white circles after the overlay.
+
 On success, the final response should contain exactly one line:
 
 ```text

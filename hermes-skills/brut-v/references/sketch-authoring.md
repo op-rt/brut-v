@@ -190,6 +190,12 @@ For white circles, set `IFILL WHITE` or `NO_FILL` before the circle pass, then
 switch to `IFILL BLACK` before rank labels. Do not redraw every circle with one
 final black stroke after branching. Rank labels should be placed at the actual
 circle center coordinates; do not use manual x/y offsets to fake centering.
+The canvas is immediate-mode: later drawing appears on top. If a brief asks for
+a final black filled polygon on top of the circles, draw the circles first and
+draw the filled polygon after them. For tangent and arc geometry around circles,
+reuse the visible circle radius exactly unless the user asks for inset geometry;
+`r=50` with "no shrinking" means tangent and arc points use radius 50, not a
+smaller helper radius.
 
 ## Shape Construction
 

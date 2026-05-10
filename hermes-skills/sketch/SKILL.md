@@ -99,6 +99,8 @@ Prefer named procedures such as:
 - `improve_path_2opt`
 - `draw_path`
 - `draw_circles`
+- `build_tangent_outline`
+- `draw_tangent_fill`
 - `draw_ranks`
 
 Use arrays for `xs`, `ys`, `selected`, `visited`, `order`, and `ranks`. Keep
@@ -121,6 +123,21 @@ Respect visual constraints exactly:
   filled marks;
 - draw unselected and selected states from the `selected` array, never from a
   hardcoded visual pass.
+- respect canvas draw order: things requested "on top" must be drawn later in
+  the source. If a black filled final polygon must cover the white circles,
+  draw the grid circles first, then build and draw the filled polygon last.
+
+For tangent/arc outlines around selected circles:
+
+- use the drawn circle radius as the geometry radius. If the prompt says
+  `r=50` and "no shrinking", every tangent and arc computation must use radius
+  50, not 40, 45, `r - strokeWeight`, or an "inner" visual radius;
+- store one canonical radius value and reuse it for both `CIRCLE` and tangent
+  construction, or document any separate variable as exactly equal to it;
+- same-winding neighbors use outer tangents and opposite-winding neighbors use
+  inner/crossing tangents when the prompt asks for that distinction;
+- arcs must be built on the displayed circle boundary, not on a helper circle
+  hidden inside the displayed one.
 
 For labels inside circles:
 
@@ -150,6 +167,29 @@ For selected/unselected circle prompts, the source must include all of these:
 - `IFILL WHITE` or `NO_FILL` before drawing white circles;
 - no later all-circles pass that redraws every circle with the same black
   stroke.
+
+For tangent/arc prompts with an explicit radius, the source must include all of
+these:
+
+- one canonical radius matching the prompt, such as `li s_radius, 50` or
+  `radius: .word 50`, used by both `CIRCLE` and tangent/arc construction;
+- no tangent radius smaller than the drawn circle radius unless the user asked
+  for inset tangents;
+- no expressions or comments indicating shrinkage, such as `r - 5`,
+  `r - stroke`, `inner radius`, `inset`, or `avoid collision`, when the prompt
+  says tangents must touch the drawn circles;
+- separate branches or procedures for outer tangents versus inner/crossing
+  tangents if the brief distinguishes same-winding and opposite-winding
+  neighbors.
+
+For draw-order prompts, the source must show the requested layering order:
+
+- background first;
+- grid/circles before the final overlay when the overlay is requested on top;
+- `IFILL BLACK`/`FILL` and the final polygon or filled shape after the circle
+  drawing call/procedure;
+- no later white-circle redraw after the black filled polygon unless the user
+  explicitly asks the circles to appear on top.
 
 For rank labels inside circles, the source must include all of these:
 
