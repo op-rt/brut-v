@@ -443,6 +443,7 @@
 <script type="module">
   import { assemble }                                         from "./assembler.js";
   import { CORE_FILES }                                        from "./core-fs.js";
+  import { renderSketchSource }                                from "./agent-runtime.js";
   import { RV32IF }                                           from "./rv32if.js";
   import { SKETCH_FILES, SKETCH_NAMES, SKETCH_DISPLAY_NAMES } from "./sketches-fs.js";
 
@@ -681,14 +682,14 @@
       setStatus("assemble crashed", "err");
       reportConsoleDiagnostics("asm-crash", [msg]);
       markEditorDiagnostics([msg]);
-      return;
+      return { ok: false, stage: "assemble-crash", errors: [msg] };
     }
     const dt = (performance.now() - t0).toFixed(0);
 
     if (r.errors && r.errors.length) {
       setStatus("assemble error", "err");
       reportAssemblerDiagnostics(r.errors);
-      return;
+      return { ok: false, stage: "assemble", errors: r.errors, warnings: r.warnings ?? [] };
     }
 
     sim.load(r.text, r.data);
@@ -700,6 +701,15 @@
     }
     setStatus(`assembled (${r.text.length}B text - ${r.data.length}B data - ${dt}ms)`, "ok");
     if (autoRun) simRun();
+    return {
+      ok: true,
+      stage: "assemble",
+      textBytes: r.text.length,
+      dataBytes: r.data.length,
+      warnings: r.warnings ?? [],
+      animated: assembledIsAnimated,
+      symbols: r.symbols ? Object.fromEntries([...r.symbols.entries()].slice(0, 200)) : {},
+    };
   }
 
   function simRun() {
@@ -770,6 +780,95 @@
     const rgba = sim.getFramebuffer(w, h);
     ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
   }
+
+  async function agentGetSource() {
+    await monacoReady;
+    return {
+      name: currentSourceName,
+      source: editor.getValue(),
+    };
+  }
+
+  async function agentSetSource(source, options = {}) {
+    await monacoReady;
+    simStop();
+    currentSourceName = String(options.name ?? "agent-sketch.asm");
+    updateCodeTitle(currentSourceName);
+    editor.setValue(String(source ?? ""));
+    clearConsole();
+    clearEditorDiagnostics();
+    assembled = false;
+    assembledSymbols = null;
+    assembledIsAnimated = false;
+    setStatus("ready");
+    return agentGetSource();
+  }
+
+  async function agentRender(options = {}) {
+    await monacoReady;
+    const source = options.source == null ? editor.getValue() : String(options.source);
+    const name = String(options.name ?? currentSourceName ?? "agent-sketch.asm");
+    const result = renderSketchSource(source, {
+      mainName: name,
+      frames: options.frames,
+      maxSteps: options.maxSteps,
+      autoIncludeCore: options.autoIncludeCore,
+    });
+
+    if (options.source != null && options.updateEditor !== false) {
+      await agentSetSource(source, { name });
+    }
+
+    if (result.rgba) {
+      ctx2d.putImageData(new ImageData(result.rgba, result.image.width, result.image.height), 0, 0);
+    }
+
+    if (result.ok) setStatus("agent render ready", "ok");
+    else setStatus(result.stage === "assemble" ? "agent assemble error" : "agent runtime error", "err");
+
+    const { rgba, ...summary } = result;
+    return {
+      ...summary,
+      pngDataUrl: result.rgba ? canvas.toDataURL("image/png") : null,
+    };
+  }
+
+  async function agentRunFrames(options = {}) {
+    const current = await agentGetSource();
+    return agentRender({
+      ...options,
+      source: options.source ?? current.source,
+      name: options.name ?? current.name,
+      updateEditor: options.updateEditor ?? false,
+    });
+  }
+
+  window.BRUTV_AGENT = {
+    version: "0.2.0",
+    listSketches() {
+      return {
+        names: [...SKETCH_NAMES],
+        displayNames: { ...SKETCH_DISPLAY_NAMES },
+        current: currentSourceName,
+      };
+    },
+    getSource: agentGetSource,
+    setSource: agentSetSource,
+    assemble: () => doAssemble(false),
+    run: () => simRun(),
+    runFrames: agentRunFrames,
+    render: agentRender,
+    stop: () => simStop(true),
+    getConsole() {
+      return [...consoleLines];
+    },
+    getCanvasImageData() {
+      return ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+    },
+    getCanvasPng() {
+      return canvas.toDataURL("image/png");
+    },
+  };
 
   function setStatus(msg, cls = "") { $status.textContent = msg; $status.className = cls; }
   function clearConsole() {

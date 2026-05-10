@@ -86,9 +86,9 @@ PRINT_REGF fs0
 PRINT_HEXF fs0
 ```
 
-## Potential Agent Hook Surface
+## Browser Agent Hook
 
-A browser-aware agent can benefit from a stable JavaScript hook such as:
+The browser page exposes a stable JavaScript hook:
 
 ```js
 window.BRUTV_AGENT = {
@@ -97,13 +97,18 @@ window.BRUTV_AGENT = {
   setSource,
   assemble,
   run,
+  render,
+  runFrames,
   stop,
   getConsole,
-  getCanvasImageData
+  getCanvasImageData,
+  getCanvasPng
 };
 ```
 
-This does not exist as a formal API yet. It is a recommended future integration layer.
+`render` and `runFrames` accept bounded options such as `frames`, `maxSteps`,
+`source`, `name`, and `autoIncludeCore`, then return validation, runtime,
+console, image metadata, and a PNG data URL.
 
 ## Potential Hermes Integration Surface
 
@@ -112,7 +117,7 @@ Best practical options:
 1. **Project context files**: `HERMES.md` and `docs/agent/*.md`.
 2. **Hermes skill**: a `SKILL.md` with references and examples.
 3. **MCP server**: expose Brut-V operations as tools.
-4. **Browser hook**: expose `window.BRUTV_AGENT` for browser-control agents.
+4. **Browser hook**: use `window.BRUTV_AGENT` for browser-control agents.
 5. **API bridge**: have the page call Hermes API server when explicitly configured by the user.
 
 ## MCP Server
@@ -129,6 +134,7 @@ Current tools:
 - `validate_sketch`
 - `validate_existing_sketch`
 - `get_macro_reference`
+- `render_sketch`
 
 Current prompts:
 
@@ -140,10 +146,8 @@ Current prompts:
 Future write/browser-control tools could include:
 
 - `set_sketch`
-- `run_static`
 - `run_frames`
 - `get_console`
-- `render_png`
 - `save_sketch`
 
 Security rule: do not expose arbitrary filesystem write access through a browser hook. Keep write operations scoped to sketches or explicit user-approved files.

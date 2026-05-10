@@ -27,8 +27,9 @@ interaction surface, from the user's Hermes Telegram bot.
 - `mcp/brut-v/`: local stdio MCP server exposing docs, sketches, validation,
   and workflow prompts.
 
-The MCP server is currently read/validate-only. It does not edit files, run the
-browser, capture the canvas, regenerate generated files, or publish sketches.
+The MCP server is currently non-writing. It can read docs/sketches, validate
+sketches, and render a bounded PNG capture through the headless BRUT-V runtime.
+It does not edit files, regenerate generated files, or publish sketches.
 
 ## MCP Configuration
 
@@ -59,6 +60,8 @@ only the MCP server and future approved runtime endpoints.
 - `validate_sketch`: assemble a provided sketch with the browser assembler.
 - `validate_existing_sketch`: assemble an existing sketch.
 - `get_macro_reference`: return the macro reference, optionally filtered.
+- `render_sketch`: assemble, execute, and return a PNG capture for provided or
+  existing sketch source.
 
 ## Current MCP Prompts
 
@@ -98,7 +101,6 @@ interaction history should remain in Hermes memory.
 
 The next MCP/runtime layer should add:
 
-- `render_sketch`: assemble, run, and return a PNG render.
 - `run_frames`: execute an animated sketch for a bounded number of frames.
 - `get_canvas_snapshot`: return PNG/image data plus basic render metadata.
 - `save_agent_sketch`: save a generated sketch to a constrained draft area.
@@ -109,9 +111,9 @@ The next MCP/runtime layer should add:
 These tools should call a stable browser/runtime hook rather than scrape DOM
 details.
 
-## Future Runtime Hook
+## Browser Runtime Hook
 
-The web app should eventually expose:
+The web app exposes:
 
 ```js
 window.BRUTV_AGENT = {
@@ -127,8 +129,9 @@ window.BRUTV_AGENT = {
 };
 ```
 
-This API is the intended contract between BRUT-V, MCP, browser automation,
-Telegram, voice commands, and professor mode.
+This API now exists on the browser page as `window.BRUTV_AGENT`. It is the
+intended contract between BRUT-V, MCP, browser automation, Telegram, voice
+commands, and professor mode.
 
 ## Future Professor Tools
 

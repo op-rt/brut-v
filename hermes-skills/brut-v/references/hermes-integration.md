@@ -33,8 +33,8 @@ Configure the BRUT-V MCP server as a local stdio server:
 }
 ```
 
-Current tools are read/validate-only: docs, sketches, macro reference, and
-assembler validation. Do not assume render, write, or browser-control tools
+Current tools are non-writing: docs, sketches, macro reference, assembler
+validation, and bounded PNG rendering. Do not assume write or publishing tools
 exist until the MCP server exposes them.
 
 ## Style Memory

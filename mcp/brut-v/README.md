@@ -10,12 +10,12 @@ It exposes:
 - Bundled sketches as MCP resources.
 - Tools to list/read/search docs and sketches.
 - Tools to validate sketch source with the browser assembler.
+- A tool to render a sketch through the headless BRUT-V runtime and return a PNG capture.
 - Prompts for sketch creation, debugging, macro explanation, and Processing-to-BRUT-V translation.
 - Prompts for the living atelier and professor-mode workflows.
 
-This first version is intentionally read/validate-only. It does not edit files,
-run the browser, capture canvas output, regenerate generated files, or publish
-sketches.
+This version is still non-writing. It can validate and render, but it does not
+edit files, regenerate generated files, or publish sketches.
 
 ## Install
 
@@ -65,14 +65,13 @@ Allowed today:
 - list/read source and embedded sketches;
 - validate arbitrary sketch source with the browser assembler;
 - validate existing sketches;
+- render a provided or existing sketch to PNG with bounded frames and steps;
 - read macro reference material;
 - provide prompts for creative, debug, porting, atelier, and professor workflows.
 
 Not exposed yet:
 
 - file writes;
-- runtime execution;
-- browser/canvas capture;
 - generated file regeneration;
 - test execution;
 - publishing.
@@ -88,4 +87,5 @@ Not exposed yet:
 
 ## Notes
 
-The server is read/validate-only in this first version. It does not regenerate `core-fs.js` or `sketches-fs.js`, and it does not edit files.
+The server is non-writing. It does not regenerate `core-fs.js` or
+`sketches-fs.js`, and it does not edit files.

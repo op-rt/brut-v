@@ -8,7 +8,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { assemble } from "../../assembler.js";
+import { renderSketchSource } from "../../agent-runtime.js";
 import { SKETCH_FILES, SKETCH_NAMES } from "../../sketches-fs.js";
+import { encodePngRgba } from "./png.mjs";
 
 const serverFile = fileURLToPath(import.meta.url);
 const serverDir = path.dirname(serverFile);
@@ -128,6 +130,18 @@ function jsonResult(value) {
     return {
         content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
         structuredContent: value,
+    };
+}
+
+function renderResult(value, pngBase64, includePngBase64 = false) {
+    const summary = includePngBase64 ? { ...value, pngBase64 } : value;
+    return {
+        content: [
+            { type: "text", text: JSON.stringify(summary, null, 2) },
+            { type: "image", data: pngBase64, mimeType: "image/png" },
+        ],
+        structuredContent: summary,
+        isError: !value.ok,
     };
 }
 
@@ -450,6 +464,88 @@ server.registerTool(
             query,
             matches: searchText(text, query, 50),
         });
+    },
+);
+
+server.registerTool(
+    "render_sketch",
+    {
+        title: "Render BRUT-V Sketch",
+        description: "Assemble and execute a BRUT-V sketch in the headless runtime, then return a PNG capture.",
+        inputSchema: {
+            source: z.string().optional().describe("BRUT-V assembly source. If omitted, provide name."),
+            name: z.string().optional().describe("Existing sketch name or virtual filename for diagnostics."),
+            sourceMode: z.enum(["auto", "disk", "embedded"]).optional().describe("Where to read name from when source is omitted."),
+            frames: z.number().int().min(1).max(240).optional().describe("Animated frame count to run before capture. Defaults to 1."),
+            maxSteps: z.number().int().min(1).max(200_000_000).optional().describe("Maximum instruction count before aborting."),
+            autoIncludeCore: z.boolean().optional().describe("Whether to auto-import core.s. Defaults to true."),
+            includePngBase64: z.boolean().optional().describe("Also include PNG base64 in structuredContent. The image content is always returned."),
+        },
+    },
+    async ({
+        source,
+        name,
+        sourceMode = "auto",
+        frames = 1,
+        maxSteps,
+        autoIncludeCore = true,
+        includePngBase64 = false,
+    }) => {
+        try {
+            let sketchSource = source;
+            let mainName = name ?? "sketch.asm";
+            let sketchSourceKind = "provided";
+
+            if (sketchSource == null) {
+                if (!name)
+                    return errorResult("render_sketch requires either source or name.");
+                const sketch = await readSketch(name, sourceMode);
+                sketchSource = sketch.text;
+                mainName = sketch.name;
+                sketchSourceKind = sketch.source;
+            }
+
+            const result = renderSketchSource(sketchSource, {
+                mainName,
+                frames,
+                maxSteps,
+                autoIncludeCore,
+            });
+
+            if (!result.rgba) {
+                const failure = {
+                    ok: false,
+                    name: mainName,
+                    source: sketchSourceKind,
+                    stage: result.stage,
+                    validation: result.validation,
+                    runtime: result.runtime,
+                    console: result.console,
+                    image: result.image,
+                };
+                return {
+                    content: [{ type: "text", text: JSON.stringify(failure, null, 2) }],
+                    structuredContent: failure,
+                    isError: true,
+                };
+            }
+
+            const png = encodePngRgba(result.rgba, result.image.width, result.image.height);
+            const pngBase64 = png.toString("base64");
+            const { rgba, ...summary } = result;
+            return renderResult({
+                ...summary,
+                name: mainName,
+                source: sketchSourceKind,
+                image: {
+                    ...result.image,
+                    mimeType: "image/png",
+                    byteLength: png.length,
+                },
+            }, pngBase64, includePngBase64);
+        } catch (error) {
+            return errorResult(error.message);
+        }
     },
 );
 

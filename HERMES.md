@@ -9,12 +9,14 @@ Use this file as the first orientation layer. Load the more specific files in `d
 - `index.html`: browser UI, editor, canvas, console, sketch runner.
 - `assembler.js`: JavaScript assembler with preprocessing, macro expansion, layout, encoding, diagnostics.
 - `rv32if.js`: JavaScript RV32I/F virtual machine used by the browser.
+- `agent-runtime.js`: shared bounded render/metadata helper used by agents and MCP.
 - `core-fs.js`: generated embedded copy of `../core/*.s`.
 - `sketches-fs.js`: generated embedded copy of selected `../sketches/*.asm`.
 - `docs/`: user-facing documentation shown by the static site.
 - `build/`: generation scripts for embedded core and sketch file systems.
 - `hermes-skills/brut-v/`: portable Hermes skill for BRUT-V sketch generation, debugging, and runtime work.
 - `mcp/brut-v/`: local stdio MCP server exposing BRUT-V docs, sketches, validation tools, and prompts.
+  It also exposes bounded PNG rendering through the shared runtime helper.
 
 The source-of-truth assembly framework lives one directory above this repo:
 
