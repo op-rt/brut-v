@@ -133,6 +133,8 @@ Respect visual constraints exactly:
 
 For tangent/arc outlines around selected circles:
 
+- load the BRUT-V tangent geometry reference when available before writing the
+  sketch;
 - use the drawn circle radius as the geometry radius. If the prompt says
   `r=50` and "no shrinking", every tangent and arc computation must use radius
   50, not 40, 45, `r - strokeWeight`, or an "inner" visual radius;

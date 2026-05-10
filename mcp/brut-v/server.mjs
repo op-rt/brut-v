@@ -65,6 +65,13 @@ const DOC_RESOURCES = [
         relativePath: "docs/agent/brutv-examples.md",
     },
     {
+        key: "brut-v-agent-tangent-geometry",
+        uri: "brut-v://docs/agent/tangent-geometry",
+        title: "BRUT-V Tangent Geometry",
+        description: "Canonical radius-preserving tangent and arc construction rules for circle-based sketches.",
+        relativePath: "docs/agent/brutv-tangent-geometry.md",
+    },
+    {
         key: "brut-v-hermes-integration",
         uri: "brut-v://docs/agent/hermes-integration",
         title: "BRUT-V Hermes Integration",
@@ -147,6 +154,13 @@ const DOC_RESOURCES = [
         title: "BRUT-V Hermes Skill Examples",
         description: "Copyable BRUT-V sketch examples for Hermes.",
         relativePath: "hermes-skills/brut-v/references/examples.md",
+    },
+    {
+        key: "brut-v-hermes-skill-tangent-geometry",
+        uri: "brut-v://hermes/skill/references/tangent-geometry",
+        title: "BRUT-V Hermes Skill Tangent Geometry",
+        description: "Portable tangent-geometry reference for Hermes sketch generation.",
+        relativePath: "hermes-skills/brut-v/references/tangent-geometry.md",
     },
     {
         key: "brut-v-hermes-skill-integration",
@@ -622,6 +636,22 @@ function auditSketchConstraints(sourceInput, promptInput = "") {
                 [issue],
             );
         }
+        for (const issue of findHardcodedTangentOffsetEvidence(lines, promptRadius)) {
+            addFinding(
+                "high",
+                "hardcoded-inset-tangent-offset",
+                "Tangent/arc code uses a hardcoded offset smaller than the requested radius. This contradicts the same-radius invariant even if the comments claim otherwise.",
+                [issue],
+            );
+        }
+        for (const issue of findSignOnlyTangentConstructionEvidence(lines)) {
+            addFinding(
+                "high",
+                "sign-only-tangent-construction",
+                "Tangent endpoints appear to be built from sign-only offsets instead of a normalized center-to-center perpendicular or equivalent radius-preserving construction.",
+                [issue],
+            );
+        }
     }
 
     if (overlayRequested) {
@@ -654,6 +684,11 @@ function auditSketchConstraints(sourceInput, promptInput = "") {
             sameRadiusRequested,
             overlayRequested,
         },
+        auditedProcedures: extractTangentProcedureBlocks(lines).map(block => ({
+            name: block.name,
+            startLine: block.startLine,
+            endLine: block.endLine,
+        })),
         findings,
     };
 }
@@ -722,13 +757,115 @@ function findShrinkageEvidence(lines, radius) {
     return issues.slice(0, 20);
 }
 
+function findHardcodedTangentOffsetEvidence(lines, radius) {
+    if (radius == null) return [];
+
+    const issues = [];
+    const minSuspicious = Math.max(2, Math.floor(radius * 0.5));
+    for (const block of extractTangentProcedureBlocks(lines)) {
+        for (const entry of block.lines) {
+            const li = entry.text.match(/\bli\s+([A-Za-z][\w]*)\s*,\s*(-?\d+)\b/);
+            if (li) {
+                const value = Math.abs(Number.parseInt(li[2], 10));
+                if (value > minSuspicious && value < radius) {
+                    issues.push({
+                        procedure: block.name,
+                        line: entry.line,
+                        text: entry.text,
+                        radius,
+                        literal: value,
+                    });
+                }
+            }
+
+            const addi = entry.text.match(/\baddi\s+([A-Za-z][\w]*)\s*,\s*([A-Za-z][\w]*)\s*,\s*(-?\d+)\b/);
+            if (addi) {
+                const value = Math.abs(Number.parseInt(addi[3], 10));
+                if (value > minSuspicious && value < radius) {
+                    issues.push({
+                        procedure: block.name,
+                        line: entry.line,
+                        text: entry.text,
+                        radius,
+                        literal: value,
+                    });
+                }
+            }
+        }
+    }
+
+    return issues.slice(0, 20);
+}
+
+function findSignOnlyTangentConstructionEvidence(lines) {
+    const issues = [];
+    for (const block of extractTangentProcedureBlocks(lines)) {
+        const text = block.lines.map(entry => entry.text).join("\n");
+        if (!/\b(?:bgt|blt|bge|ble)\s+\w+\s*,\s*zero\b/i.test(text))
+            continue;
+        if (!/\bli\s+\w+\s*,\s*-?\d+\b/i.test(text))
+            continue;
+        if (hasNormalizationEvidence(text))
+            continue;
+        issues.push({
+            procedure: block.name,
+            line: block.startLine,
+            text: `${block.name}: sign branches plus literal offsets, with no normalization evidence`,
+        });
+    }
+    return issues;
+}
+
+function hasNormalizationEvidence(text) {
+    return /\b(?:SQRT|IDIST|DIST|div|divu|fdiv|fsqrt|isqrt|sqrt|normalize|normalise|unit_normal|unit_perp|inv_len|invlen)\b/i.test(text);
+}
+
+function extractTangentProcedureBlocks(lines) {
+    return extractProcedureBlocks(lines, /(?:tangent|tan|arc|bridge|outline)/i);
+}
+
+function extractProcedureBlocks(lines, namePattern) {
+    const labels = [];
+    for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(/^\s*([A-Za-z_][\w]*):\s*(?:#.*)?$/);
+        if (!match) continue;
+        if (!isTopLevelProcedureLabel(match[1])) continue;
+        labels.push({ name: match[1], line: i + 1, index: i });
+    }
+
+    const blocks = [];
+    for (let i = 0; i < labels.length; i++) {
+        const label = labels[i];
+        if (!namePattern.test(label.name)) continue;
+        const next = labels[i + 1];
+        const endIndex = next ? next.index : lines.length;
+        blocks.push({
+            name: label.name,
+            startLine: label.line,
+            endLine: endIndex,
+            lines: lines.slice(label.index, endIndex).map((text, offset) => ({
+                line: label.index + offset + 1,
+                text,
+            })),
+        });
+    }
+    return blocks;
+}
+
+function isTopLevelProcedureLabel(name) {
+    return name === "setup" || /^(?:init|clear|choose|select|rank|dist|reverse|two|load|compute|build|draw|render|make|trace|improve)_/.test(name);
+}
+
 function inspectDrawOrder(source) {
     const lines = source.split(/\r?\n/);
     const setup = extractSetupBody(lines);
     const searchLines = setup.length ? setup : lines.map((text, index) => ({ text, line: index + 1 }));
-    const circle = searchLines.find(entry => /\bcall\s+draw_(?:grid_)?circles?\b|\bI?CIRCLE\b/i.test(entry.text));
+    const callPrefix = String.raw`(?:call\s+|jal\s+ra\s*,\s*|jal\s+|j\s+)`;
+    const circlePattern = new RegExp(String.raw`\b${callPrefix}draw_(?:grid_)?circles?\b|\bI?CIRCLE\b`, "i");
+    const overlayPattern = new RegExp(String.raw`\b${callPrefix}draw_(?:tangent|final|overlay|filled|black|shape|polygon)\w*\b|\bIFILL\s+BLACK\b|\bBEGINSHAPE\b|\bPOLYGON\b`, "i");
+    const circle = searchLines.find(entry => circlePattern.test(entry.text));
     const overlay = searchLines.find(entry =>
-        /\bcall\s+draw_(?:tangent|final|overlay|filled|black|shape|polygon)\w*\b|\bIFILL\s+BLACK\b|\bBEGINSHAPE\b|\bPOLYGON\b/i.test(entry.text)
+        overlayPattern.test(entry.text)
     );
     return {
         circleLine: circle?.line ?? null,
@@ -1741,5 +1878,9 @@ server.registerPrompt(
     }),
 );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+export { auditSketchConstraints };
+
+if (path.resolve(process.argv[1] ?? "") === serverFile) {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+}

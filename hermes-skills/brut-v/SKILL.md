@@ -21,6 +21,7 @@ BRUT-V is a creative coding framework where visual sketches are written in a com
 - For available macros and naming conventions, load `skill_view("brut-v", "references/macro-api.md")`.
 - For browser/runtime/canvas integration, load `skill_view("brut-v", "references/web-runtime.md")`.
 - For copyable sketch patterns, load `skill_view("brut-v", "references/examples.md")`.
+- For tangent and arc geometry around circles, load `skill_view("brut-v", "references/tangent-geometry.md")`.
 - For Hermes atelier, Telegram, memory, MCP, and professor-mode direction, load `skill_view("brut-v", "references/hermes-integration.md")`.
 - For the generate-render-critique-iterate loop, load `skill_view("brut-v", "references/creative-loop.md")`.
 

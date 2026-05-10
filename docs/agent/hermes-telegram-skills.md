@@ -87,6 +87,8 @@ user explicitly asked for inset geometry. Include a source comment such as
 verify the invariant before rendering. Also state and implement the boundary
 condition: each tangent point must satisfy `(px-cx)^2 + (py-cy)^2 == R^2`
 within the sketch's integer or fixed-point approximation.
+For nontrivial tangent prompts, load the tangent geometry reference before
+writing the sketch.
 
 For layering prompts, remember that BRUT-V draws immediately: later drawing is
 visually on top. If the user asks for the final black filled polygon on top of
