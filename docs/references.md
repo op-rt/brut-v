@@ -549,6 +549,18 @@ Computes string height in pixels.
 TEXT_HEIGHT t1, s0
 ```
 
+### `FONT font`
+
+Selects the bitmap font table used by `TEXT`.
+
+- Parameters: `ptr`
+- Notes: the default font is initialized by the runtime; use `FONT` only when you provide another 256-character, 8-byte-per-character font table.
+
+```asm
+la   s0, font_8x8
+FONT s0
+```
+
 ## Image
 
 ### `IMAGE ptr, x, y, w, h`
@@ -1035,6 +1047,22 @@ ANIMATE draw
 ```
 
 If `setup` and `draw` are contiguous code labels, a second `.text` before `draw:` is unnecessary. Section directives stay active until another section is selected.
+
+### `LOOP`
+
+Re-enables the animation loop after `NOLOOP`.
+
+```asm
+LOOP
+```
+
+### `NOLOOP`
+
+Stops the animation loop after the current `draw` frame completes.
+
+```asm
+NOLOOP
+```
 
 ### `FRAMECOUNT dest`
 
