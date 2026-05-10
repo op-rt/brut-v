@@ -37,6 +37,10 @@ If no run is specified, audit the latest saved atelier run.
    - invalid label/immediate usage such as `li t0, label`;
    - state kept in clobber-prone `t*`, `ft*`, `a*`, or `fa*` registers;
    - missing or incorrect `ANIMATE draw` for animation;
+   - precomputed algorithmic results that should be produced by the sketch
+     itself, such as hardcoded random selections, path orders, or ranks;
+   - use of external Python/JavaScript/shell reasoning to satisfy a requested
+     sketch algorithm instead of implementing it in RISC-V;
    - loops that may hit the runtime step limit;
    - RARS compatibility risks;
    - visual risks such as blank output, off-canvas coordinates, or invisible
@@ -61,3 +65,7 @@ When there are no serious issues, say that clearly and mention remaining test
 or trace limitations.
 
 Do not rewrite the sketch unless the user asks. Do not edit repo source files.
+
+When the prompt requested random selection, sorting, ranking, pathfinding, or
+simulation, treat hardcoded final result arrays as an audit finding unless the
+user explicitly asked for a fixed static design.

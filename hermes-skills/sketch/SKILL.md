@@ -55,6 +55,35 @@ BRUT-V, MCP, session ids, run ids, or media delivery.
 MEDIA:/root/brut-v/mcp/brut-v/atelier-runs/<sessionId>/<runId>/render.png
 ```
 
+## Algorithmic Integrity
+
+The sketch must implement the user's algorithmic request in BRUT-V assembly.
+Do not use Python, JavaScript, shell tools, or offline reasoning to precompute
+creative state that the user asked the sketch to calculate.
+
+This is especially important for briefs that say:
+
+- randomly choose, shuffle, sort, rank, pathfind, simulate, distribute, pack, or
+  calculate;
+- shortest path, nearest neighbor, distance field, grid selection, stochastic
+  layout, cellular automata, particle system, or generative rules.
+
+For those briefs:
+
+- random choices must be produced in the sketch with `IRANDOM`, `RANDOM`,
+  `IRANDOMF`, `RANDOMF`, or `RANDOM24`;
+- sorting, ranking, nearest-neighbor walks, and distance comparisons must be
+  implemented with RISC-V loops, arrays, and integer or float arithmetic;
+- tables may contain user-specified constants such as grid coordinates, label
+  strings, or fixed palette values;
+- tables must not contain the final random selection, final path order, final
+  ranks, or other computed result unless the user explicitly requests a fixed
+  static composition.
+
+If a complex algorithm is too large, implement a clear bounded approximation in
+assembly and name it in details mode. For example, use a nearest-neighbor path
+heuristic rather than claiming an exact traveling-salesman optimum.
+
 ## Telegram Output Rules
 
 For a successful normal `/sketch` request, the final visible Telegram result

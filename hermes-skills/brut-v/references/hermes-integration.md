@@ -60,6 +60,12 @@ paths, or diagnostics. Use details mode only when the user asks for it, or when
 the render fails. To avoid double image delivery, call `render_and_save_sketch`
 with `includeImageContent: false` before emitting the final `MEDIA:` line.
 
+For algorithmic drawing briefs, the computation must live in the generated
+BRUT-V sketch. Do not use Python, JavaScript, shell tools, or model-side
+precomputation to choose random elements, sort, rank, pathfind, or simulate.
+External tools may support operations such as install, test, and file
+inspection, but not the creative algorithm requested by the user.
+
 ## Style Memory
 
 Use Hermes memory for private user taste and interaction history:

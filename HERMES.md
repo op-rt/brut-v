@@ -72,6 +72,11 @@ The current Telegram command surface is `/sketch`, `/source`, `/explain`,
 until then, professor commands should label register traces as conceptual
 walkthroughs.
 
+When a sketch brief asks for random selection, sorting, ranking, pathfinding, or
+simulation, generated sketches must implement that logic in RISC-V assembly.
+Do not precompute creative algorithm results with Python or other external
+tools and then hardcode them into `.data`.
+
 Recent Hermes capabilities such as durable multi-agent Kanban, subagent
 delegation, memory, skills, MCP, automations, messaging, and voice should be
 used to strengthen those two workflows rather than replace the user's creative

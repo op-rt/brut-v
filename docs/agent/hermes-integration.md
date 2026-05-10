@@ -116,6 +116,12 @@ Use `render_and_save_sketch(includeImageContent: false)` when sending through
 `MEDIA:` to prevent duplicate attachments. Show `sessionId`, `runId`, paths, or
 diagnostics only in details mode or failure mode.
 
+For algorithmic drawing briefs, the computation must live in the generated
+BRUT-V sketch. Do not use Python, JavaScript, shell tools, or model-side
+precomputation to choose random elements, sort, rank, pathfind, or simulate.
+External tools may support operations such as install, test, and file
+inspection, but not the creative algorithm requested by the user.
+
 ## Security Model
 
 Agents must treat BRUT-V as a constrained creative environment, not as a general

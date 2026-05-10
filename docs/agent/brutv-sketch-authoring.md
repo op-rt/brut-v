@@ -144,6 +144,51 @@ FILL a0
 
 `IRANDOMF` and `RANDOMF` return floats in `[low, high)`.
 
+## Algorithmic Briefs
+
+When a user asks a sketch to choose, shuffle, sort, rank, pathfind, simulate, or
+calculate, implement that logic in RISC-V assembly. Do not precompute the final
+creative state with Python, JavaScript, shell tools, or offline reasoning.
+
+Allowed static data:
+
+- user-specified constants such as grid coordinates, radius values, color
+  values, label strings, and array sizes;
+- lookup tables that are part of the rendering technique.
+
+Not allowed unless the user asks for a fixed composition:
+
+- hardcoded random selections;
+- hardcoded shuffled order;
+- hardcoded path or ranking that the prompt asked the sketch to calculate;
+- a comment claiming a calculation happened when the source only contains the
+  final result.
+
+For example, a request to select 12 circles from a 4x4 grid and rank a path
+should use sketch data such as:
+
+```asm
+.data
+xs:       .space 64      # or static grid coordinates
+ys:       .space 64
+selected: .space 64      # computed by IRANDOM loop
+visited:  .space 64
+order:    .space 48      # 12 selected indices
+ranks:    .space 64
+```
+
+Then `setup` should:
+
+1. initialize arrays;
+2. call `IRANDOM` in a loop until exactly 12 unique indices are selected;
+3. compute the path order with bounded RISC-V loops, such as a nearest-neighbor
+   distance heuristic over squared center-point distances;
+4. store ranks in memory;
+5. draw lines, circles, and labels from the computed arrays.
+
+If the exact algorithm is too large for a sketch, implement and name a bounded
+approximation. Do not silently replace runtime logic with precomputed data.
+
 ## Shape Construction
 
 Manual shape:

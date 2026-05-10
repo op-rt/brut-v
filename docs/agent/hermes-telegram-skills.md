@@ -44,6 +44,14 @@ The agent should use `get_atelier_context`, generate a BRUT-V sketch, then call
 `render_and_save_sketch` with `includeImageContent: false` and
 `includePngBase64: false`.
 
+If the brief asks for an algorithm, the algorithm belongs in the sketch. Do not
+use Python or another external tool to choose random elements, sort them, rank
+them, or compute paths. Use external tools only for operational work such as
+installing, testing, or inspecting files. A request such as "select 12 circles
+randomly and calculate a shortest path" should produce RISC-V code that calls
+BRUT-V random macros, stores selection arrays, compares distances, and writes
+ranks at runtime.
+
 On success, the final response should contain exactly one line:
 
 ```text
