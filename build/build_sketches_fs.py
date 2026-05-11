@@ -44,6 +44,7 @@ DISPLAY_NAMES = {
     "automaton.asm":           "Automaton",
     "maze.asm":                "Maze",
     "maze_unicursal.asm":      "Maze (unicursal)",
+    "dubins_stamp.asm":        "Rubber Bands",
 }
 
 def main():
